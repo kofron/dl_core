@@ -3,10 +3,11 @@
 % messages to dl_agents.   
 -module(dl_softbus).
 
--export([attach/1,detach/1,bcast/2]).
+-export([attach/1,detach/1,bcast/3]).
 
 -type group_name_type() :: atom().
 -type softbus_msg_type() :: atom().
+-type group_member_type() :: atom().
 
 % Attach an agent to the bus.  Once attached, any message sent to any
 % group that the agent is a member of will show up in its mailbox.
@@ -25,7 +26,10 @@ detach(GroupName) ->
     end.
 
 % Send a softbus message to all members of a certain group.
--spec bcast(group_name_type(), softbus_msg_type()) -> ok | {error, nogrp}.
-bcast(GroupName, Msg) ->
-    FullMsg = {dl_sb_msg, Msg},
-    FullMsg = gproc:send({p, l, GroupName}, FullMsg).
+-spec bcast(group_name_type(), group_member_type(), softbus_msg_type()) ->
+		   ok | {error, nogrp}.
+bcast(GroupName, Sndr, Msg) ->
+    Ref = make_ref(),
+    FullMsg = {dl_sb_msg, Ref, Sndr, Msg},
+    FullMsg = gproc:send({p, l, GroupName}, FullMsg),
+    Ref.
