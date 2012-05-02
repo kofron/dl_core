@@ -19,10 +19,8 @@ init([ID|_T]) ->
 handle_sb_msg({_Ref, Id, _Msg}, #state{id=Id}=State) ->
     {noreply, State};
 handle_sb_msg({_Ref, _OtherId, Msg}, #state{id=Id}=State) ->
-    io:format("recvd mesg, echoing~n"),
     dl_softbus:bcast(agents, Id, Msg),
     {noreply, State}.
 
 handle_info(Info, State) ->
-    io:format("got info ~p~n",[Info]),
     {noreply, State}.
