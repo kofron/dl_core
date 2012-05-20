@@ -24,17 +24,20 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    FauxAgent = {
-      echo_agent,
+    ConfMgr = {
+      dl_conf_mgr,
       {
-	dl_faux_agent, 
+	dl_conf_mgr,
 	start_link,
-	[echo_agent,[]]
+	[dl_conf_mgr,[]]
       },
       permanent,
       5000,
       worker,
-      [dl_faux_agent]
+      [dl_conf_mgr]
      },
-    {ok, { {one_for_one, 5, 10}, [FauxAgent]} }.
+
+    Children = [ConfMgr],
+
+    {ok, { {one_for_one, 5, 10}, Children} }.
 
