@@ -13,12 +13,12 @@
 % group that the agent is a member of will show up in its mailbox.
 -spec attach(group_name_type()) -> ok | {error, regd}.
 attach(GroupName) ->
-    gproc:reg({p, g, GroupName}).
+    gproc:reg({p, l, GroupName}).
 
 % Detach an agent from the bus.
 -spec detach(group_name_type()) -> ok.
 detach(GroupName) ->
-    case gproc:unreg({p, g, GroupName}) of
+    case gproc:unreg({p, l, GroupName}) of
 	true ->
 	    ok;
 	false ->
@@ -31,5 +31,5 @@ detach(GroupName) ->
 bcast(GroupName, Sndr, Msg) ->
     Ref = make_ref(),
     FullMsg = {dl_sb_msg, Ref, Sndr, Msg},
-    FullMsg = gproc:send({p, g, GroupName}, FullMsg),
+    FullMsg = gproc:send({p, l, GroupName}, FullMsg),
     Ref.
