@@ -12,6 +12,7 @@
 -export([behaviour_info/1]).
 
 -export([init/1,start_link/2]).
+-export([call/2,cast/2]).
 -export([handle_call/3,handle_cast/2,terminate/2,code_change/3,handle_info/2]).
 
 -record(gen_state,{mod, mod_sd}).
@@ -22,18 +23,29 @@ behaviour_info(callbacks) ->
     [
      {init,1},
      {start_link,2},
-     {handle_sb_msg,2}
+     {handle_sb_msg,2},
+     {handle_call,3},
+     {handle_cast,2},
+     {handle_info,2},
+     {code_change,3},
+     {terminate,2}
     ];
 behaviour_info(_) ->
     undefined.
+
+call(AgentRef, Call) ->
+    gen_server:call(AgentRef, Call).
+
+cast(AgentRef, Cast) ->
+    gen_server:cast(AgentRef, Cast).
 
 % Links as part of a supervision tree.
 start_link(CallbackMod, ID) ->
     gen_server:start_link({local, ID}, ?MODULE, [ID,CallbackMod], []).
 
-init([ID,CallbackMod]=Args) ->
+init([_ID,CallbackMod]=Args) ->
     case CallbackMod:init(Args) of
-	{ok, ModStateData}=StartOK ->
+	{ok, ModStateData} ->
 	    dl_softbus:attach(agents),
 	    StateData = #gen_state{
 	      mod = CallbackMod,
@@ -48,14 +60,21 @@ handle_info({dl_sb_msg, Ref, Id, M}, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
     {noreply, NewModState} = Mod:handle_sb_msg({Ref,Id,M}, SD),
     {noreply, GSD#gen_state{mod_sd=NewModState}}.
 
-handle_call(Call, From, StateData) ->
-    ?MODULE:handle_call(Call, From, StateData).
+handle_call(Call, From, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
+    case Mod:handle_call(Call, From, SD) of
+	{reply, Reply, NewStateData} ->
+	    {reply, Reply, GSD#gen_state{mod_sd=NewStateData}}
+    end.
 
-handle_cast(Cast, StateData) ->
-    ?MODULE:handle_cast(Cast, StateData).
+handle_cast(Cast, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
+    case Mod:handle_cast(Cast, SD) of
+	{noreply, NewStateData} ->
+	    {noreply, GSD#gen_state{mod_sd=NewStateData}}
+    end.
 
-code_change(Version, StateData, Extra) ->
-    ?MODULE:code_change(Version, StateData, Extra).
+code_change(Version, #gen_state{mod=Mod, mod_sd=SD}=GSD, Extra) ->
+    {ok, NewModSD} = Mod:code_change(Version, SD, Extra),
+    {ok, GSD#gen_state{mod_sd=NewModSD}}.
 
 terminate(Reason, #gen_state{mod=Mod, mod_sd=SD}) ->
     ok = dl_softbus:detach(agents),
