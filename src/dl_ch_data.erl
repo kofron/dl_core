@@ -24,7 +24,7 @@
 %%%%%%%%%%%
 %%% API %%%
 %%%%%%%%%%%
--export([new/0]).
+-export([new/0, fields/0]).
 -export([
 	 get_id/1,get_node/1,get_instr/1,get_model/1,
 	 get_locator/1,get_type/1,get_post_hooks/1
@@ -45,6 +45,15 @@
 -spec new() -> record().
 new() ->
     #cd{}.
+
+%%---------------------------------------------------------------------%%
+%% @doc fields/0 returns a list of the fields in the data structure 
+%%      a la record_info.  Is this a terrible idea?  Maybe.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec fields() -> [atom()].
+fields() ->
+    record_info(fields, cd).
 
 %%---------------------------------------------------------------------%%
 %% Getters and setters %%
