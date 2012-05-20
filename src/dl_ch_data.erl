@@ -91,3 +91,43 @@ set_type(NewType, #cd{}=Rec) ->
 add_post_hook(NewHook, #cd{post_hk=PH}=Rec) ->
     Rec#cd{post_hk=PH ++ [NewHook]}.
 
+%%%%%%%%%%%%%%%
+%%% Testing %%% 
+%%%%%%%%%%%%%%%
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+%%% Test that the new() function gives us a new record.
+new_rec_test() ->
+    ?assertEqual(#cd{},dl_ch_data:new()).
+
+add_post_hooks_test() ->
+    Hooks = [a,b,c],
+    D0 = dl_ch_data:new(),
+    DF = lists:foldl(fun(X,Acc) ->
+			     dl_ch_data:add_post_hook(X,Acc)
+		     end,
+		     D0,
+		     Hooks),
+    ?assertEqual(Hooks, dl_ch_data:get_post_hooks(DF)).
+    
+set_type_test() ->
+    %% test default type
+    ?assertEqual(dmm_dc,dl_ch_data:get_type(#cd{})),
+    
+    %% set and check
+    Type = dmm_ac,
+    DF = dl_ch_data:set_type(Type,#cd{}),
+    ?assertEqual(Type, dl_ch_data:get_type(DF)).
+
+set_locator_test() ->
+    %% test default locator
+    ?assertEqual(none, dl_ch_data:get_locator(#cd{})),
+    
+    %% set and check
+    Locator = someloc,
+    DF = dl_ch_data:set_locator(Locator, #cd{}),
+    ?assertEqual(Locator, dl_ch_data:get_locator(DF)).
+    
+
+-endif.
