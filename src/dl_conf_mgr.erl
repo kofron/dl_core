@@ -146,6 +146,12 @@ declare_nonsense(Msg) ->
 
 -spec add_or_update_channel(dl_ch_data:ch_data()) -> ok.
 add_or_update_channel(ChData) ->
+    case get_ch_data(dl_ch_data:get_id(ChData)) of
+	{error, no_channel} ->
+	    lager:info("new channel recvd: ~p",[ChData]);
+	{ok, _Ch} ->
+	    lager:info("overwriting channel conf for channel: ~p",[ChData])
+    end,
     F = fun() ->
 		mnesia:write(ChData)
 	end,
