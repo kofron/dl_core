@@ -58,7 +58,12 @@ init([_ID,CallbackMod]=Args) ->
 
 handle_info({dl_sb_msg, Ref, Id, M}, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
     {noreply, NewModState} = Mod:handle_sb_msg({Ref,Id,M}, SD),
-    {noreply, GSD#gen_state{mod_sd=NewModState}}.
+    {noreply, GSD#gen_state{mod_sd=NewModState}};
+handle_info(Info, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
+    case Mod:handle_info(Info, SD) of
+	{noreply, NewStateData} ->
+	    {noreply, GSD#gen_state{mod_sd=NewStateData}}
+    end.
 
 handle_call(Call, From, #gen_state{mod=Mod, mod_sd=SD}=GSD) ->
     case Mod:handle_call(Call, From, SD) of
