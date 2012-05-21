@@ -8,7 +8,7 @@
 %%%%%%%%%%%%%%%%%%%
 -type ch_type() :: rtd85 | rtd91 | dmm_dc | dmm_ac.
 
--record(cd,{
+-record(dl_ch_data,{
 	  id = <<>>:: binary(),
 	  node = local :: local | node(),
 	  instr = none :: binary(),
@@ -18,13 +18,13 @@
 	  post_hk = [] :: [dripline_hook:hook()]
 	 }).
 
--opaque ch_data() :: #cd{}.
+-opaque ch_data() :: #dl_ch_data{}.
 -export_type([ch_data/0]).
 
 %%%%%%%%%%%
 %%% API %%%
 %%%%%%%%%%%
--export([new/0, fields/0]).
+-export([new/0, fields/0, from_json/1]).
 -export([
 	 get_id/1,get_node/1,get_instr/1,get_model/1,
 	 get_locator/1,get_type/1,get_post_hooks/1
@@ -42,10 +42,28 @@
 %% @doc new/0 returns a new channel data structure.
 %% @end
 %%---------------------------------------------------------------------%%
--spec new() -> record().
+-spec new() -> ch_data().
 new() ->
-    #cd{}.
+    #dl_ch_data{}.
 
+%%---------------------------------------------------------------------%%
+%% @doc from_json/1 returns a new channel data structure constructed by
+%%      recursively parsing JSON until all fields that can be set are 
+%%      set.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec from_json(ejson:json_object()) -> {ok, ch_data()} | {error, term()}.
+from_json(JS) ->
+    D = new(),
+    do_from_json(props:drop(['_id','_rev','type'],JS),D).
+do_from_json({[]},Acc) ->
+    {ok, Acc};
+do_from_json({[{<<"name">>,N}|T]},Acc) ->
+    Name = erlang:binary_to_atom(N, latin1),
+    do_from_json({T}, dl_ch_data:set_id(Name, Acc));
+do_from_json({[{_Other,_}|T]},Acc) ->
+    do_from_json({T}, Acc).
+    
 %%---------------------------------------------------------------------%%
 %% @doc fields/0 returns a list of the fields in the data structure 
 %%      a la record_info.  Is this a terrible idea?  Maybe.
@@ -53,52 +71,52 @@ new() ->
 %%---------------------------------------------------------------------%%
 -spec fields() -> [atom()].
 fields() ->
-    record_info(fields, cd).
+    record_info(fields, dl_ch_data).
 
 %%---------------------------------------------------------------------%%
 %% Getters and setters %%
 %%---------------------------------------------------------------------%%
-get_id(#cd{id=ID}) ->
+get_id(#dl_ch_data{id=ID}) ->
     ID.
 
-get_node(#cd{node=Nd}) ->
+get_node(#dl_ch_data{node=Nd}) ->
     Nd.
 
-get_instr(#cd{instr=In}) ->
+get_instr(#dl_ch_data{instr=In}) ->
     In.
 
-get_model(#cd{model=Mod}) ->
+get_model(#dl_ch_data{model=Mod}) ->
     Mod.
 
-get_locator(#cd{locator=Loc}) ->
+get_locator(#dl_ch_data{locator=Loc}) ->
     Loc.
 
-get_type(#cd{type=Tp}) ->
+get_type(#dl_ch_data{type=Tp}) ->
     Tp.
 
-get_post_hooks(#cd{post_hk=PH}) ->
+get_post_hooks(#dl_ch_data{post_hk=PH}) ->
     PH.
 
-set_id(NewID, #cd{}=Rec) ->
-    Rec#cd{id=NewID}.
+set_id(NewID, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{id=NewID}.
 
-set_node(NewNode, #cd{}=Rec) ->
-    Rec#cd{node=NewNode}.
+set_node(NewNode, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{node=NewNode}.
 
-set_instr(NewInstr, #cd{}=Rec) ->
-    Rec#cd{instr=NewInstr}.
+set_instr(NewInstr, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{instr=NewInstr}.
 
-set_model(NewNode, #cd{}=Rec) ->
-    Rec#cd{node=NewNode}.
+set_model(NewNode, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{node=NewNode}.
 
-set_locator(NewLocator, #cd{}=Rec) ->
-    Rec#cd{locator=NewLocator}.
+set_locator(NewLocator, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{locator=NewLocator}.
 
-set_type(NewType, #cd{}=Rec) ->
-    Rec#cd{type=NewType}.
+set_type(NewType, #dl_ch_data{}=Rec) ->
+    Rec#dl_ch_data{type=NewType}.
 
-add_post_hook(NewHook, #cd{post_hk=PH}=Rec) ->
-    Rec#cd{post_hk=PH ++ [NewHook]}.
+add_post_hook(NewHook, #dl_ch_data{post_hk=PH}=Rec) ->
+    Rec#dl_ch_data{post_hk=PH ++ [NewHook]}.
 
 %%%%%%%%%%%%%%%
 %%% Testing %%% 
@@ -108,7 +126,7 @@ add_post_hook(NewHook, #cd{post_hk=PH}=Rec) ->
 
 %%% Test that the new() function gives us a new record.
 new_rec_test() ->
-    ?assertEqual(#cd{},dl_ch_data:new()).
+    ?assertEqual(#dl_ch_data{},dl_ch_data:new()).
 
 add_post_hooks_test() ->
     Hooks = [a,b,c],
@@ -122,20 +140,20 @@ add_post_hooks_test() ->
     
 set_type_test() ->
     %% test default type
-    ?assertEqual(dmm_dc,dl_ch_data:get_type(#cd{})),
+    ?assertEqual(dmm_dc,dl_ch_data:get_type(#dl_ch_data{})),
     
     %% set and check
     Type = dmm_ac,
-    DF = dl_ch_data:set_type(Type,#cd{}),
+    DF = dl_ch_data:set_type(Type,#dl_ch_data{}),
     ?assertEqual(Type, dl_ch_data:get_type(DF)).
 
 set_locator_test() ->
     %% test default locator
-    ?assertEqual(none, dl_ch_data:get_locator(#cd{})),
+    ?assertEqual(none, dl_ch_data:get_locator(#dl_ch_data{})),
     
     %% set and check
     Locator = someloc,
-    DF = dl_ch_data:set_locator(Locator, #cd{}),
+    DF = dl_ch_data:set_locator(Locator, #dl_ch_data{}),
     ?assertEqual(Locator, dl_ch_data:get_locator(DF)).
     
 
