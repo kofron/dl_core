@@ -76,6 +76,9 @@ handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
 handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
+handle_info({change, _R, {done, LastSeq}}, #state{db_cnf_hndl=H}=State) ->
+    {ok, ConfChPid} = setup_conf_streaming(H),
+    {noreply, State#state{conf_ch_pid=ConfChPid}};
 handle_info({change, _R, ChangeData}, #state{}=State) ->
     dl_softbus:bcast(agents, ?MODULE, ChangeData),
     {noreply, State}.
