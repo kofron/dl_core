@@ -70,6 +70,9 @@ do_from_json({[{<<"locator">>,N}|T]},Acc) ->
 do_from_json({[{<<"type">>,N}|T]},Acc) ->
     Name = erlang:binary_to_atom(N, latin1),
     do_from_json({T}, dl_ch_data:set_type(Name, Acc));
+do_from_json({[{<<"node">>,N}|T]},Acc) ->
+    Name = erlang:binary_to_atom(N, latin1),
+    do_from_json({T}, dl_ch_data:set_node(Name, Acc));
 do_from_json({[{<<"post_hooks">>,N}|T]},Acc) ->
     Hooks = lists:map(fun(X) ->
 			      erlang:binary_to_atom(X, latin1)
