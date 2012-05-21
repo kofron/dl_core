@@ -1,6 +1,9 @@
-.eunit
-deps
-priv
-*.o
-*.beam
-*.plt
+*~
+*#
+#*
+ebin/*
+rebar
+lib/
+priv/*.so
+release/dripline
+release/files
