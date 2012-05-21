@@ -38,9 +38,11 @@ init([ID|_T]) ->
     ok = create_mnesia_tables(),
     {ok, #state{id=ID}}.
 
-handle_sb_msg({_Ref, Id, _Msg}, #state{id=Id}=State) ->
-    {noreply, State};
-handle_sb_msg({_Ref, _OtherId, _Msg}, #state{}=State) ->
+%% Handle messages coming from the couchdb adapter.  These are going
+%% to be mostly configuration changes, as that's what the adapter likes
+%% to pump into the softbus.
+handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
+    maybe_update_tables(Msg),
     {noreply, State}.
 
 handle_info(_Info, StateData) ->
@@ -89,3 +91,35 @@ get_local_chs() ->
 					       qlc:e(Qs)
 				       end),
     Ans.
+
+-spec maybe_update_tables(ejson:json_object()) -> ok.
+maybe_update_tables(Msg) ->
+    case props:get('doc.type',Msg) of
+	<<"channel">> ->
+	    update_channel_table(Msg);
+	<<"instrument">> ->
+	    update_instrument_table(Msg);
+	Other ->
+	    declare_nonsense(Msg)
+    end.
+	
+-spec update_channel_table(ejson:json_object()) -> ok.
+update_channel_table(Msg) ->	      
+    Doc = props:get('doc', Msg),
+    {ok, ChData} = dl_ch_data:from_json(Doc),
+    add_or_update_channel(ChData).
+
+-spec update_instrument_table(ejson:json_object()) -> ok.
+update_instrument_table(Msg) ->
+    ok.
+
+-spec declare_nonsense(ejson:json_object()) -> ok.
+declare_nonsense(Msg) ->
+    ok.
+
+-spec add_or_update_channel(dl_ch_data:ch_data()) -> ok.
+add_or_update_channel(ChData) ->
+    F = fun() ->
+		mnesia:write(ChData)
+	end,
+    mnesia:transaction(F).
