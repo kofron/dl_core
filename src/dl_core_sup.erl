@@ -37,7 +37,20 @@ init([]) ->
       [dl_conf_mgr]
      },
 
-    Children = [ConfMgr],
+    CdbAdapter = {
+      dl_cdb_adapter,
+      {
+	dl_cdb_adapter,
+	start_link,
+	[dl_cdb_adapter,[]]
+      },
+      permanent,
+      5000,
+      worker,
+      [dl_cdb_adapter]
+     },
+
+    Children = [ConfMgr,CdbAdapter],
 
     {ok, { {one_for_one, 5, 10}, Children} }.
 
