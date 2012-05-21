@@ -23,13 +23,16 @@
 %%%%%%%%%%%%%%%%%%%%%
 %%% API Functions %%%
 %%%%%%%%%%%%%%%%%%%%%
--export([local_channels/0]).
+-export([local_channels/0,channel_info/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API Definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 local_channels() ->
     gen_dl_agent:call(?MODULE, local_ch).
+
+channel_info(Ch) ->
+    gen_dl_agent:call(?MODULE, {info, Ch}).
 
 start_link(?MODULE, _Args) ->
     gen_dl_agent:start_link(?MODULE, ?MODULE).
@@ -49,7 +52,15 @@ handle_info(_Info, StateData) ->
     {noreply, StateData}.
 
 handle_call(local_ch, _From, StateData) ->
-    {reply, get_local_chs(), StateData}.
+    {reply, get_local_chs(), StateData};
+handle_call({info, Ch}, _From, StateData) ->
+    Reply = case get_ch_data(Ch) of
+		{ok, Data} ->
+		    Data;
+		{error, _Reason}=E ->
+		    E
+	    end,
+    {reply, Reply, StateData}.
 
 handle_cast(_Cast, StateData) ->
     {noreply, StateData}.
@@ -91,6 +102,22 @@ get_local_chs() ->
 					       qlc:e(Qs)
 				       end),
     Ans.
+
+-spec get_ch_data(atom()) -> {ok, dl_ch_data:ch_data()}
+				 | {error, term()}.
+get_ch_data(ChName) ->
+    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
+		      dl_ch_data:get_id(Ch) == ChName
+	       ]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    case Ans of
+	[] ->
+	    {error, no_channel};
+	[H] ->
+	    {ok, H}
+    end.
 
 -spec maybe_update_tables(ejson:json_object()) -> ok.
 maybe_update_tables(Msg) ->
