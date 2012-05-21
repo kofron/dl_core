@@ -61,6 +61,26 @@ do_from_json({[]},Acc) ->
 do_from_json({[{<<"name">>,N}|T]},Acc) ->
     Name = erlang:binary_to_atom(N, latin1),
     do_from_json({T}, dl_ch_data:set_id(Name, Acc));
+do_from_json({[{<<"instr">>,N}|T]},Acc) ->
+    Name = erlang:binary_to_atom(N, latin1),
+    do_from_json({T}, dl_ch_data:set_instr(Name, Acc));
+do_from_json({[{<<"locator">>,N}|T]},Acc) ->
+    Name = erlang:binary_to_atom(N, latin1),
+    do_from_json({T}, dl_ch_data:set_locator(Name, Acc));
+do_from_json({[{<<"type">>,N}|T]},Acc) ->
+    Name = erlang:binary_to_atom(N, latin1),
+    do_from_json({T}, dl_ch_data:set_type(Name, Acc));
+do_from_json({[{<<"post_hooks">>,N}|T]},Acc) ->
+    Hooks = lists:map(fun(X) ->
+			      erlang:binary_to_atom(X, latin1)
+		      end,
+		      N),
+    NewData = lists:foldl(fun(X,DatAcc) ->
+			     dl_ch_data:add_post_hook(X,DatAcc)
+			  end,
+			  Acc,
+			  Hooks),
+    do_from_json({T}, NewData);    
 do_from_json({[{_Other,_}|T]},Acc) ->
     do_from_json({T}, Acc).
     
