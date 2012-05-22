@@ -26,6 +26,8 @@
 -export([local_channels/0,channel_info/1]).
 -export([instrument_info/1]).
 
+-export([get_read_mfa/1]).
+
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API Definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -37,6 +39,9 @@ channel_info(Ch) ->
 
 instrument_info(In) ->
     gen_dl_agent:call(?MODULE, {info, in, In}).
+
+get_read_mfa(ChannelName) ->
+    gen_dl_agent:call(?MODULE, {mfa, ch, ChannelName}).
 
 start_link(?MODULE, _Args) ->
     gen_dl_agent:start_link(?MODULE, ?MODULE).
@@ -52,6 +57,7 @@ init([ID|_T]) ->
 handle_sb_msg({_Ref, ?MODULE, _Msg}, #state{}=State) ->
     {noreply, State};
 handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
+    lager:debug("cdb adapter got sb msg: ~p",[Msg]),
     maybe_update_tables(Msg),
     {noreply, State}.
 
@@ -75,8 +81,15 @@ handle_call({info, in, In}, _From, StateData) ->
 		{error, _Reason}=E ->
 		    E
 	    end,
+    {reply, Reply, StateData};
+handle_call({mfa, ch, ChName}, _From, StateData) ->
+    Reply = case get_ch_mfa(ChName) of
+		{ok, MFA} ->
+		    MFA;
+		{error, _Reason}=E ->
+		    E
+	    end,
     {reply, Reply, StateData}.
-
 
 handle_cast(_Cast, StateData) ->
     {noreply, StateData}.
@@ -140,6 +153,32 @@ get_local_chs() ->
 get_ch_data(ChName) ->
     Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
 		      dl_ch_data:get_id(Ch) == ChName
+	       ]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    case Ans of
+	[] ->
+	    {error, no_channel};
+	[H] ->
+	    {ok, H}
+    end.
+
+-spec get_ch_mfa(atom()) -> {ok, term()} | {error, term()}.
+get_ch_mfa(ChannelName) ->
+    Qc = qlc:q([
+		Ch || Ch <- mnesia:table(dl_ch_data)
+	       ]),
+    Qi = qlc:q([
+		In || In <- mnesia:table(dl_instr_data)
+	       ]),
+    Qs = qlc:q([{dl_instr_data:get_bus(I),
+		 read,
+		 [dl_instr_data:get_id(I),dl_ch_data:get_id(C)]} ||
+		   C <- Qc, 
+		   I <- Qi,
+		   dl_instr_data:get_id(I) =:= dl_ch_data:get_instr(C),
+		   dl_ch_data:get_id(C) =:= ChannelName
 	       ]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
@@ -226,7 +265,7 @@ add_instrument(InData) ->
 		mnesia:write(InData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    ok = dl_instr:start_instr(InData),
+    ok = try_instr_start(InData),
     dl_softbus:bcast(agents, ?MODULE, {nin, InData}).
 
 -spec update_instrument(dl_instr_data:dl_instr_data()) -> ok.
@@ -252,3 +291,13 @@ update_channel(ChData) ->
 	end,
     {atomic, ok} = mnesia:transaction(F),
     dl_softbus:bcast(agents, ?MODULE, {uch, dl_ch_data:get_id(ChData)}).
+
+-spec try_instr_start(dl_instr_data:dl_instr_data()) -> ok.
+try_instr_start(InData) ->
+    try 
+	dl_instr:start_instr(InData)
+    catch
+	error:undef ->
+	    lager:warning("Couldn't call dl_instr:start_instr! (undef)")
+    end,
+    ok.
