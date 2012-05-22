@@ -61,7 +61,7 @@ do_from_json({[]},Acc) ->
 do_from_json({[{<<"name">>,N}|T]},Acc) ->
     Name = erlang:binary_to_atom(N, latin1),
     do_from_json({T}, dl_ch_data:set_id(Name, Acc));
-do_from_json({[{<<"instr">>,N}|T]},Acc) ->
+do_from_json({[{<<"instrument">>,N}|T]},Acc) ->
     Name = erlang:binary_to_atom(N, latin1),
     do_from_json({T}, dl_ch_data:set_instr(Name, Acc));
 do_from_json({[{<<"locator">>,N}|T]},Acc) ->
