@@ -25,6 +25,7 @@
 	  port
 	 }).
 -record(state, {
+	  revs,
 	  db_cnf_hndl,
 	  db_cmd_hndl,
 	  conf_ch_ref,
@@ -63,6 +64,7 @@ init(_Args) ->
     {ok, ConfRef} = setup_conf_streaming(ConfDbHndl),
     {ok, CmdRef} = setup_cmd_streaming(CmdDbHndl),
     InitialState = #state{
+      revs = dict:new(),
       db_cnf_hndl = ConfDbHndl,
       db_cmd_hndl = CmdDbHndl,
       conf_ch_ref = ConfRef,
@@ -93,14 +95,31 @@ handle_info({change, R, {done, _LastSeq}},
     {noreply, State#state{conf_ch_ref=ConfRef}};
 %% We get two kinds of changes.  The first kind comes from the 
 %% configuration stream:
-handle_info({change, R, ChangeData}, #state{conf_ch_ref=R}=State) ->
-    dl_softbus:bcast(agents, ?MODULE, ChangeData),
-    {noreply, State};
+handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=Revs}=State) ->
+    NewState = case ignore_update_rev(ChangeData, Revs) of
+		   true ->
+		       ok;
+		   false ->
+		       dl_softbus:bcast(agents, ?MODULE, ChangeData),
+		       State#state{revs=update_rev_data(ChangeData,Revs)}
+	       end,
+    {noreply, NewState};
 %% The second kind of changes come from the command stream.
-handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R}=State) ->
-    {ok, MFA} = dl_compiler:compile(ChangeData),
-    lager:debug("mfa is ~p",[MFA]),
-    {noreply, State}.
+handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl=H}=State) ->
+    NewState = case ignore_update_rev(ChangeData, Revs) of
+		   true ->
+		       State;
+		   false ->
+		       {ok, BFA} = dl_compiler:compile(ChangeData),
+		       MFA = case BFA of
+				 {{prologix, _, _}, F, A} ->
+				     {gen_prologix, F, A}
+			     end,
+		       %% Need to check here if this node can respond
+		       spawn(fun() -> worker(MFA,props:get('doc._id',ChangeData),H) end),
+		       State#state{revs=update_rev_data(ChangeData,Revs)}
+	       end,
+    {noreply, NewState}.
 
 handle_call(_Call, _From, StateData) ->
     {reply, ok, StateData}.
@@ -154,3 +173,65 @@ setup_cmd_streaming(DbHandle) ->
 	{error, _Error}=E ->
 	    E
     end.
+
+%%---------------------------------------------------------------------%%
+%% @doc update_rev_data adds an ignore flag to the revision dictionary 
+%%		for a given document and revision tag.
+%% @end
+%%---------------------------------------------------------------------%%
+update_rev_data(ChangeData,RevisionInfo) ->
+	Id = props:get('doc._id',ChangeData),
+	BinRev = props:get('doc._rev',ChangeData),
+	Rev = strip_rev_no(BinRev),
+	dict:store(Id,Rev + 1,RevisionInfo).
+
+%%----------------------------------------------------------------------%%
+%% @doc When a document passes through the changes feed, we automatically
+%%      ignore the next update.  This should work just fine.
+%%----------------------------------------------------------------------%%
+-spec ignore_update_rev(ejson:json_object(), dict()) -> boolean().
+ignore_update_rev(ChangeLine, RevsDict) ->
+    DocID = props:get('doc._id', ChangeLine),
+    BinRev = props:get('doc._rev', ChangeLine),
+    RevNo = strip_rev_no(BinRev),
+    case dict:find(DocID, RevsDict) of
+	{ok, RevNo} ->
+	    true;
+	_ ->
+	    false
+    end.
+
+%%---------------------------------------------------------------------%%
+%% @doc strip_rev_no/1 takes a binary "_rev" tag and strips the revision
+%% 		sequence number.  this is very useful for notifying the monitor
+%%		that a sequence number is about to be changed by e.g. us.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec strip_rev_no(binary()) -> integer().
+strip_rev_no(BinRev) ->
+    [NS,_] = string:tokens(binary_to_list(BinRev),"-"),
+    {N,[]} = string:to_integer(NS),
+    N.
+
+%%----------------------------------------------------------------------%%
+%% @doc The worker for this module is responsible for going off and 
+%%      actually fetching a result without blocking the main adapter.  
+%%      When it gets a response, it will update couch with the appropriate
+%%      answer.  
+%%----------------------------------------------------------------------%%
+-spec worker(term(),binary(),couchbeam:db()) -> ok.
+worker({M, F, A}, DocID, DbHandle) ->
+    R = erlang:apply(M,F,A),
+    lager:debug("worker will update doc ~p with result ~p",[DocID,R]),
+    Result = [{<<"result">>, R}],
+    update_couch_doc(DbHandle, DocID, Result).
+
+%%----------------------------------------------------------------------%%
+%% @doc Update couch doc with a result.  Pretty straightforward, uses
+%%      couchbeam.
+%%----------------------------------------------------------------------%%
+-spec update_couch_doc(couchbeam:db(),binary(),term()) -> ok | {error, term()}.
+update_couch_doc(DbHandle, DocID, Props) ->
+    {ok, Doc} = couchbeam:open_doc(DbHandle, DocID),
+    NewDoc = couchbeam_doc:extend(Props, Doc),
+    {ok, _} = couchbeam:save_doc(DbHandle, NewDoc).
