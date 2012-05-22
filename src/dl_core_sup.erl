@@ -24,6 +24,8 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+    Compiler = ?CHILD(dl_compiler, worker),
+
     ConfMgr = {
       dl_conf_mgr,
       {
@@ -50,7 +52,7 @@ init([]) ->
       [dl_cdb_adapter]
      },
 
-    Children = [ConfMgr,CdbAdapter],
+    Children = [Compiler, ConfMgr,CdbAdapter],
 
     {ok, { {one_for_one, 5, 10}, Children} }.
 
