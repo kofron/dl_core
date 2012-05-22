@@ -26,7 +26,9 @@
 	 }).
 -record(state, {
 	  db_cnf_hndl,
-	  conf_ch_pid,
+	  db_cmd_hndl,
+	  conf_ch_ref,
+	  cmd_ch_ref,
 	  db_loc = #cdb_loc{}
 	 }).
 
@@ -57,10 +59,14 @@ init(_Args) ->
     {ok, {Host,Port}} = application:get_env(dl_core, couch_host),
     DbConn = couchbeam:server_connection(Host,Port),
     {ok, ConfDbHndl} = couchbeam:open_db(DbConn, "dripline_conf"),
-    {ok, ConfChPid} = setup_conf_streaming(ConfDbHndl),
+    {ok, CmdDbHndl} = couchbeam:open_db(DbConn, "dripline_cmd"),
+    {ok, ConfRef} = setup_conf_streaming(ConfDbHndl),
+    {ok, CmdRef} = setup_cmd_streaming(CmdDbHndl),
     InitialState = #state{
       db_cnf_hndl = ConfDbHndl,
-      conf_ch_pid = ConfChPid,
+      db_cmd_hndl = CmdDbHndl,
+      conf_ch_ref = ConfRef,
+      cmd_ch_ref = CmdRef,
       db_loc = #cdb_loc{
 	host = Host,
 	port = Port
@@ -70,17 +76,29 @@ init(_Args) ->
 
 %% Because this process can push messages into the softbus, we ignore
 %% messages that we actually sent.
-handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
+handle_sb_msg({_Ref, dl_cdb_adapter, _Msg}, #state{}=State) ->
     {noreply, State};
 %% All other softbus messages are handled here.
 handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
-handle_info({change, _R, {done, LastSeq}}, #state{db_cnf_hndl=H}=State) ->
-    {ok, ConfChPid} = setup_conf_streaming(H),
-    {noreply, State#state{conf_ch_pid=ConfChPid}};
-handle_info({change, _R, ChangeData}, #state{}=State) ->
+%% When our streams go down, recuisitate them
+handle_info({change, R, {done, _LastSeq}}, 
+	    #state{cmd_ch_ref=R,db_cmd_hndl=H}=State) ->
+    {ok, CmdRef} = setup_cmd_streaming(H),
+    {noreply, State#state{cmd_ch_ref=CmdRef}};
+handle_info({change, R, {done, _LastSeq}}, 
+	    #state{conf_ch_ref=R,db_cnf_hndl=H}=State) ->
+    {ok, ConfRef} = setup_conf_streaming(H),
+    {noreply, State#state{conf_ch_ref=ConfRef}};
+%% We get two kinds of changes.  The first kind comes from the 
+%% configuration stream:
+handle_info({change, R, ChangeData}, #state{conf_ch_ref=R}=State) ->
     dl_softbus:bcast(agents, ?MODULE, ChangeData),
+    {noreply, State};
+%% The second kind of changes come from the command stream.
+handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R}=State) ->
+    lager:debug("mfa is ~p",[dl_compiler:compile(ChangeData)]),
     {noreply, State}.
 
 handle_call(_Call, _From, StateData) ->
@@ -111,8 +129,27 @@ terminate(_Reason, _StateData) ->
 setup_conf_streaming(DbHandle) ->
     StreamOpts = [continuous, include_docs, {since, 0}],
     case couchbeam_changes:stream(DbHandle, self(), StreamOpts) of
-	{ok, _StartRef, ChPid} ->
-	    {ok, ChPid};
+	{ok, StartRef, _ChPid} ->
+	    {ok, StartRef};
+	{error, _Error}=E ->
+	    E
+    end.
+
+%%----------------------------------------------------------------------%%
+%% @doc setup_cmd_streaming sets up the adapter to receive commands via
+%%      couchdb.  This is a little different from the configuration feed
+%%      because we definitely do not want to process every command since
+%%      the dawn of the database.  Instead, we only get changes to the DB
+%%      since the last sequence number.
+%%----------------------------------------------------------------------%%
+-spec setup_cmd_streaming(couchbeam:db()) -> ok | {error, term()}.
+setup_cmd_streaming(DbHandle) ->
+    {ok,Info} = couchbeam:db_info(DbHandle),
+    LastSeq = props:get('update_seq',Info),
+    StreamOpts = [continuous, include_docs, {since, LastSeq}],
+    case couchbeam_changes:stream(DbHandle, self(), StreamOpts) of
+	{ok, StartRef, _ChPid} ->
+	    {ok, StartRef};
 	{error, _Error}=E ->
 	    E
     end.
