@@ -42,7 +42,7 @@ init([]) ->
 
 handle_call({compile, JS}, _From, State) ->
     Reply = case drip_compile(JS) of
-		{ok, _Ch, _F}=Success ->
+		{ok, _F}=Success ->
 		    Success;
 		{error, _E}=Err ->
 		    Err
@@ -162,7 +162,7 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
 
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
-    dl_conf_mgr:get_read_mfa(Ch);
+    {ok, dl_conf_mgr:get_read_mfa(Ch)};
 compile_to_mfa(#intermed{type=command, do=set, channel=_Ch}) ->
     ok.
 
