@@ -10,7 +10,7 @@
 -type id_type() :: binary().
 -type model_type() :: atom().
 -type support_type() :: atom().
--type bus_type() :: binary().
+-type bus_type() :: {atom(), atom(), integer() | atom()}.
 
 %%%%%%%%%%%%%%%%%%%
 %%% Core record %%%
@@ -51,7 +51,7 @@ new() ->
 		id = <<>>,
 		model = none,
 		supports = [],
-		bus = none
+		bus = {none, none, none}
 	}.
 
 %%---------------------------------------------------------------------%%
@@ -150,8 +150,8 @@ do_from_json({[{<<"instrument_model">>,N}|T]},Acc) ->
     Name = erlang:binary_to_atom(N, latin1),
     do_from_json({T}, dl_instr_data:set_model(Name, Acc));
 do_from_json({[{<<"bus">>,N}|T]},Acc) ->
-    Name = erlang:binary_to_atom(N, latin1),
-    do_from_json({T}, dl_instr_data:set_bus(Name, Acc));
+    Bus = parse_bus_from_string(N),
+    do_from_json({T}, dl_instr_data:set_bus(Bus, Acc));
 do_from_json({[{<<"supports">>,N}|T]},Acc) ->
     Names = lists:map(fun(X) ->
 			      erlang:binary_to_atom(X, latin1)
@@ -160,3 +160,20 @@ do_from_json({[{<<"supports">>,N}|T]},Acc) ->
     do_from_json({T}, dl_instr_data:set_supports(Names, Acc));
 do_from_json({[{_Other,_}|T]},Acc) ->
     do_from_json({T}, Acc).
+
+%%---------------------------------------------------------------------%%
+%% @doc Buses are stored in the database as strings in the form
+%%      'bus_name/bus_process:bus_addr', but internally they are tuples
+%%      that look like {bus_name, bus_proc, bus_addr}.  This function 
+%%      parses the string into the internal representation.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec parse_bus_from_string(binary()) -> bus_type().
+parse_bus_from_string(Bin) ->
+    [BusB,ProcB,AddrB] = binary:split(Bin,[<<"/">>,<<":">>],[global]),
+    {Addr,[]} = string:to_integer(erlang:binary_to_list(AddrB)),
+    {
+      binary_to_atom(BusB,latin1),
+      binary_to_atom(ProcB,latin1),
+      Addr
+    }.
