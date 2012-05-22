@@ -174,7 +174,7 @@ get_ch_mfa(ChannelName) ->
 	       ]),
     Qs = qlc:q([{dl_instr_data:get_bus(I),
 		 read,
-		 [dl_instr_data:get_id(I),dl_ch_data:get_id(C)]} ||
+		 [dl_instr_data:get_id(I),dl_ch_data:get_locator(C)]} ||
 		   C <- Qc, 
 		   I <- Qi,
 		   dl_instr_data:get_id(I) =:= dl_ch_data:get_instr(C),
