@@ -98,7 +98,8 @@ handle_info({change, R, ChangeData}, #state{conf_ch_ref=R}=State) ->
     {noreply, State};
 %% The second kind of changes come from the command stream.
 handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R}=State) ->
-    lager:debug("mfa is ~p",[dl_compiler:compile(ChangeData)]),
+    {ok, MFA} = dl_compiler:compile(ChangeData),
+    lager:debug("mfa is ~p",[MFA]),
     {noreply, State}.
 
 handle_call(_Call, _From, StateData) ->
