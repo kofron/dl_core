@@ -5,7 +5,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Timestamp functions %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
--export([make_ts/0]).
+-export([make_ts/0, node_name/0]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Data munging functions %%%
@@ -46,4 +46,10 @@ binary_to_atom(Binary) ->
 binary_to_float(Binary) ->
 	erlang:list_to_float(erlang:binary_to_list(Binary)).
 
-
+%%---------------------------------------------------------------------%%
+%% @doc node_name returns the name of the node that we are running on.
+%%---------------------------------------------------------------------%%
+-spec node_name() -> atom().
+node_name() ->
+    [_, N] = binary:split(erlang:atom_to_binary(node(),latin1),<<"@">>),
+    binary_to_atom(N, latin1).
