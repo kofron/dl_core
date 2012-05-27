@@ -115,8 +115,15 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 				 {{prologix, _, _}, F, A} ->
 				     {gen_prologix, F, A}
 			     end,
-		       %% Need to check here if this node can respond
-		       spawn(fun() -> worker(MFA,props:get('doc._id',ChangeData),H) end),
+		       case node_is_endpoint(BFA) of
+			   true ->
+			       ID = props:get('doc._id',ChangeData),
+			       spawn(fun() -> 
+					     worker(MFA,ID,H) 
+				     end);
+			   false ->
+			       lager:debug("recvd cmd for another node.")
+		       end,
 		       State#state{revs=update_rev_data(ChangeData,Revs)}
 	       end,
     {noreply, NewState}.
@@ -235,3 +242,11 @@ update_couch_doc(DbHandle, DocID, Props) ->
     {ok, Doc} = couchbeam:open_doc(DbHandle, DocID),
     NewDoc = couchbeam_doc:extend(Props, Doc),
     {ok, _} = couchbeam:save_doc(DbHandle, NewDoc).
+
+%%----------------------------------------------------------------------%%
+%% @doc Interrogate the configuration manager to determine if the node
+%%      dripline is running on can respond to a given compiled result.
+%%----------------------------------------------------------------------%%
+-spec node_is_endpoint(term()) -> boolean().
+node_is_endpoint({{prologix, _, _}, _F, _A}) ->
+    false.
