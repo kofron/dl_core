@@ -23,9 +23,9 @@
 %%%%%%%%%%%%%%%%%%%%%
 %%% API Functions %%%
 %%%%%%%%%%%%%%%%%%%%%
--export([local_channels/0,channel_info/1]).
+-export([channel_info/1]).
 -export([instrument_info/1]).
--export([bus_info/1]).
+-export([local_buses/0,bus_info/1]).
 
 -export([get_read_mfa/1]).
 
@@ -33,7 +33,7 @@
 %%% API Definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 local_channels() ->
-    gen_dl_agent:call(?MODULE, local_ch).
+    gen_dl_agent:call(?MODULE, local_bs).
 
 channel_info(Ch) ->
     gen_dl_agent:call(?MODULE, {info, ch, Ch}).
@@ -68,8 +68,8 @@ handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
 handle_info(_Info, StateData) ->
     {noreply, StateData}.
 
-handle_call(local_ch, _From, StateData) ->
-    {reply, get_local_chs(), StateData};
+handle_call(local_bs, _From, StateData) ->
+    {reply, get_local_bss(), StateData};
 handle_call({info, ch, Ch}, _From, StateData) ->
     Reply = case get_ch_data(Ch) of
 		{ok, Data} ->
@@ -166,10 +166,10 @@ create_bus_data_table() ->
 	    AnyOther
     end.
 
--spec get_local_chs() -> [atom()].
-get_local_chs() ->
-    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
-		      dl_ch_data:get_node(Ch) == local
+-spec get_local_bss() -> [atom()].
+get_local_bss() ->
+    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_bus_data),
+		      dl_bus_data:get_node(Ch) == local
 	       ]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
