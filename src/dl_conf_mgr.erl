@@ -419,16 +419,6 @@ try_bus_start(BsData) ->
 -spec try_instr_start(dl_instr_data:dl_instr_data()) -> ok.
 try_instr_start(InData) ->
     try 
-	BusInfo = case dl_instr_data:get_bus(InData) of
-		      {_, BusProc, _} ->
-			  get_bus_data(BusProc)
-		  end,
-	case BusInfo of
-	    {error, no_bus} ->
-		ok;
-	    _GoodData ->
-		ok = dl_instr:start_bus(BusInfo)
-	end,
 	dl_instr:start_instr(InData)
     catch
 	error:undef ->
