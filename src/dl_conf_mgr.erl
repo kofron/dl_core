@@ -32,7 +32,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API Definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
-local_channels() ->
+local_buses() ->
     gen_dl_agent:call(?MODULE, local_bs).
 
 channel_info(Ch) ->
@@ -168,8 +168,9 @@ create_bus_data_table() ->
 
 -spec get_local_bss() -> [atom()].
 get_local_bss() ->
+    NodeName = dl_util:node_name(),
     Qs = qlc:q([Ch || Ch <- mnesia:table(dl_bus_data),
-		      dl_bus_data:get_node(Ch) == local
+		      dl_bus_data:get_node(Ch) == NodeName
 	       ]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
@@ -330,7 +331,15 @@ add_instrument(InData) ->
 		mnesia:write(InData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    ok = try_instr_start(InData),
+    {_BusMod, BusName, _BusAddr} = dl_instr_data:get_bus(InData),
+    IsLocalInstr = lists:member(BusName, get_local_bss()),
+    case IsLocalInstr of
+	true ->
+	    lager:info("starting local instrument (~p)",[InData]),
+	    ok = try_instr_start(InData);
+	false ->
+	    ok
+    end,
     dl_softbus:bcast(agents, ?MODULE, {nin, InData}).
 
 -spec update_instrument(dl_instr_data:dl_instr_data()) -> ok.
@@ -363,7 +372,15 @@ add_bus(BsData) ->
 		mnesia:write(BsData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    ok = try_bus_start(BsData),
+    BusName = dl_bus_data:get_id(BsData),
+    IsLocalBus = lists:member(BusName, get_local_bss()),
+    case IsLocalBus of
+	true ->
+	    ok = try_bus_start(BsData);
+	false ->
+	    lager:info("non-local bus info recvd (~p)",[BusName]),
+	    ok
+    end,
     dl_softbus:bcast(agents, ?MODULE, {nbs, BsData}).
 
 -spec update_bus(dl_bus_data:bus_data()) -> ok.
@@ -376,12 +393,12 @@ update_bus(BsData) ->
 
 -spec try_bus_start(dl_bus_data:dl_bus_data()) -> ok.
 try_bus_start(BsData) ->
-%    try
-	dl_instr:start_bus(BsData).
- %   catch
-%	Err:Reason ->
-%	    lager:warning("couldn't start bus!!! ~p:~p",[Err,Reason])
- %   end.
+    try
+	dl_instr:start_bus(BsData)
+    catch
+	Err:Reason ->
+	    lager:warning("couldn't start bus!!! ~p:~p",[Err,Reason])
+    end.
 
 -spec try_instr_start(dl_instr_data:dl_instr_data()) -> ok.
 try_instr_start(InData) ->
