@@ -384,7 +384,7 @@ add_bus(BsData) ->
 	end,
     {atomic, ok} = mnesia:transaction(F),
     BusName = dl_bus_data:get_id(BsData),
-    IsLocalInstr = lists:member(BsData, get_local_bss()),
+    IsLocalBus = lists:member(BsData, get_local_bss()),
     case IsLocalBus of
 	true ->
 	    ok = try_bus_start(BsData);
