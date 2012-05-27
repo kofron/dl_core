@@ -179,13 +179,13 @@ get_local_bss() ->
 
 -spec instr_on_bus(atom()) -> [dl_ch_data:ch_data()].
 instr_on_bus(BusName) ->
+    Mid = fun({_,X,_}) -> X end,
     Qs = qlc:q([In || In <- mnesia:table(dl_instr_data),
-		      {_BusM, BusName, _BusA} = dl_instr_data:get_bus(In)]),
+		      Mid(dl_instr_data:get_bus(In)) == BusName]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
 				       end),
     Ans.
-
 
 -spec get_ch_data(atom()) -> {ok, dl_ch_data:ch_data()}
 				 | {error, term()}.
@@ -387,7 +387,12 @@ add_bus(BsData) ->
     IsLocalBus = lists:member(BsData, get_local_bss()),
     case IsLocalBus of
 	true ->
-	    ok = try_bus_start(BsData);
+	    ok = try_bus_start(BsData),
+	    Instr = instr_on_bus(BusName),
+	    lists:foreach(fun(I) ->
+				  ok = try_instr_start(I)
+			  end,
+			  Instr);
 	false ->
 	    lager:info("non-local bus info recvd (~p)",[BusName]),
 	    ok
