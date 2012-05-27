@@ -177,6 +177,16 @@ get_local_bss() ->
 				       end),
     Ans.
 
+-spec instr_on_bus(atom()) -> [dl_ch_data:ch_data()].
+instr_on_bus(BusName) ->
+    Qs = qlc:q([In || In <- mnesia:table(dl_instr_data),
+		      {_BusM, BusName, _BusA} = dl_instr_data:get_bus(In)]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    Ans.
+
+
 -spec get_ch_data(atom()) -> {ok, dl_ch_data:ch_data()}
 				 | {error, term()}.
 get_ch_data(ChName) ->
