@@ -169,8 +169,8 @@ create_bus_data_table() ->
 -spec get_local_bss() -> [atom()].
 get_local_bss() ->
     NodeName = dl_util:node_name(),
-    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_bus_data),
-		      dl_bus_data:get_node(Ch) == NodeName
+    Qs = qlc:q([Bs || Bs <- mnesia:table(dl_bus_data),
+		      dl_bus_data:get_node(Bs) == NodeName
 	       ]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
@@ -332,7 +332,8 @@ add_instrument(InData) ->
 	end,
     {atomic, ok} = mnesia:transaction(F),
     {_BusMod, BusName, _BusAddr} = dl_instr_data:get_bus(InData),
-    IsLocalInstr = lists:member(BusName, get_local_bss()),
+    IsLocalInstr = lists:member(BusName, 
+				lists:map(fun dl_bus_data:get_id/1,get_local_bss())),
     case IsLocalInstr of
 	true ->
 	    lager:info("starting local instrument (~p)",[InData]),
