@@ -156,15 +156,17 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
 		undefined ->
 		    dl_error:field_undefined(compiler,value);
 		Val ->
-		    {ok, I#intermed{channel=Ch,value=Val}}
+		    Tgt = erlang:binary_to_atom(Ch,latin1),
+		    {ok, I#intermed{channel=Tgt,value=Val}}
 	    end
     end.
 
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
     {ok, dl_conf_mgr:get_read_mfa(Ch)};
-compile_to_mfa(#intermed{type=command, do=set, channel=_Ch}) ->
-    {ok, dl_conf_mgr:get_write_mfa(Ch)}.
+compile_to_mfa(#intermed{type=command, do=set, channel=Ch, value=Val}) ->
+    {{A, B, C}, D, Args} = dl_conf_mgr:get_write_mfa(Ch),
+    {ok, {{A,B,C}, D, Args ++ [Val]}}.
 
 %%%%%%%%%%%%%
 %%% EUNIT %%%
