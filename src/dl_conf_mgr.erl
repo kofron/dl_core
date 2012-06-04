@@ -28,6 +28,7 @@
 -export([local_buses/0,bus_info/1]).
 
 -export([get_read_mfa/1]).
+-export([get_write_mfa/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API Definitions %%%
@@ -45,7 +46,10 @@ bus_info(Bs) ->
     gen_dl_agent:call(?MODULE, {info, bs, Bs}).
 
 get_read_mfa(ChannelName) ->
-    gen_dl_agent:call(?MODULE, {mfa, ch, ChannelName}).
+    gen_dl_agent:call(?MODULE, {mfa, read, ch, ChannelName}).
+
+get_write_mfa(ChannelName) ->
+    gen_dl_agent:call(?MODULE, {mfa, write, ch, ChannelName}).
 
 start_link(?MODULE, _Args) ->
     gen_dl_agent:start_link(?MODULE, ?MODULE).
@@ -94,14 +98,23 @@ handle_call({info, bs, Bs}, _From, StateData) ->
 		    E
 	    end,
     {reply, Reply, StateData};
-handle_call({mfa, ch, ChName}, _From, StateData) ->
-    Reply = case get_ch_mfa(ChName) of
+handle_call({mfa, read, ch, ChName}, _From, StateData) ->
+    Reply = case get_ch_mfa(ChName, read) of
+		{ok, MFA} ->
+		    MFA;
+		{error, _Reason}=E ->
+		    E
+	    end,
+    {reply, Reply, StateData};
+handle_call({mfa, write, ch, ChName}, _From, StateData) ->
+    Reply = case get_ch_mfa(ChName, write) of
 		{ok, MFA} ->
 		    MFA;
 		{error, _Reason}=E ->
 		    E
 	    end,
     {reply, Reply, StateData}.
+
 
 handle_cast(_Cast, StateData) ->
     {noreply, StateData}.
@@ -219,8 +232,8 @@ get_bus_data(BsName) ->
 	    {ok, H}
     end.
 
--spec get_ch_mfa(atom()) -> {ok, term()} | {error, term()}.
-get_ch_mfa(ChannelName) ->
+-spec get_ch_mfa(atom(), atom()) -> {ok, term()} | {error, term()}.
+get_ch_mfa(ChannelName, Action) ->
     Qc = qlc:q([
 		Ch || Ch <- mnesia:table(dl_ch_data)
 	       ]),
@@ -228,7 +241,7 @@ get_ch_mfa(ChannelName) ->
 		In || In <- mnesia:table(dl_instr_data)
 	       ]),
     Qs = qlc:q([{dl_instr_data:get_bus(I),
-		 read,
+		 Action,
 		 [dl_instr_data:get_id(I),dl_ch_data:get_locator(C)]} ||
 		   C <- Qc, 
 		   I <- Qi,
