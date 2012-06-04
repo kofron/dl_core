@@ -164,7 +164,7 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
     {ok, dl_conf_mgr:get_read_mfa(Ch)};
 compile_to_mfa(#intermed{type=command, do=set, channel=_Ch}) ->
-    ok.
+    {ok, dl_conf_mgr:get_write_mfa(Ch)}.
 
 %%%%%%%%%%%%%
 %%% EUNIT %%%
