@@ -248,5 +248,7 @@ update_couch_doc(DbHandle, DocID, Props) ->
 %%      dripline is running on can respond to a given compiled result.
 %%----------------------------------------------------------------------%%
 -spec node_is_endpoint(term()) -> boolean().
-node_is_endpoint({{prologix, _, _}, _F, _A}) ->
-    false.
+node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
+    lager:debug("bus ~p interrogated.",[BusID]),
+    LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
+    lists:member(BusID, LocalIDs).
