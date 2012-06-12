@@ -65,6 +65,17 @@ kjlc354_cal(<<Val:15/binary,_Rest/binary>>) ->
     Cal = math:pow(10,Raw - 10),
     erlang:list_to_binary([erlang:float_to_list(Cal)," Torr"]).
 
+-spec strip_newline_chars(binary()) -> binary().
+strip_newline_chars(<<>>) ->
+    <<>>;
+strip_newline_chars(Bin) ->
+    case binary:last(Bin) of
+	$\n ->
+	    strip_newline_chars(binary:part(Bin,{0, byte_size(Bin) -1}));
+	_AnyOther ->
+	    Bin
+    end.
+
 -spec skip_processing(dl_data:dl_data()) -> dl_data:dl_data().
 skip_processing(Data) ->
     Data.
