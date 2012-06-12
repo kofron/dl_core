@@ -20,7 +20,7 @@
 -opaque dl_data() :: #dl_data{}.
 -export_type([dl_data/0]).
 
--export([new/0]).
+-export([new/0, from_prologix/1]).
 -export([get_data/1,set_data/2,get_final/1,set_final/2]).
 -export([get_code/1,set_code/2]).
 -export([get_ts/1,set_ts/2]).
@@ -36,6 +36,25 @@
 -spec new() -> dl_data().
 new() ->
     #dl_data{code=none,data=none,ts=none,final=none}.
+
+%%---------------------------------------------------------------------%%
+%% @doc from_prologix/1 returns a dl_data structure with values loaded
+%%      according to the response from a gen_prologix device.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec from_prologix(term()) -> dl_data().
+from_prologix(Result) ->
+    N = new(),
+    case Result of
+	{error, Reason} ->
+	    N#dl_data{code=error,
+		      data=Reason,
+		      ts=dl_util:make_ts()};
+	{Data, Ts} ->
+	    N#dl_data{code=ok,
+		      data=Data,
+		      ts=Ts}
+    end.
 
 %%---------------------------------------------------------------------%%
 %% @doc get_data extracts the data field from a dl_data record.
@@ -60,7 +79,7 @@ set_data(DD, D) when is_record(DD, dl_data) ->
 -spec get_final(dl_data()) -> dl_data_data_type().
 get_final(#dl_data{final=none,data=D}) ->
     D;
-get_final(#dl_data{final=F,data=D}) ->
+get_final(#dl_data{final=F,data=_D}) ->
     F.
 
 %%---------------------------------------------------------------------%%
