@@ -228,9 +228,20 @@ strip_rev_no(BinRev) ->
 %%----------------------------------------------------------------------%%
 -spec worker(term(),binary(),couchbeam:db()) -> ok.
 worker({M, F, A}, DocID, DbHandle) ->
-    R = erlang:apply(M,F,A),
-    lager:debug("worker will update doc ~p with result ~p",[DocID,R]),
-    Result = [{<<"result">>, R}],
+    Result = case M of
+		 gen_prologix ->
+		     Res = erlang:apply(M,F,A),
+		     DlDt = dl_data:from_prologix(Res),
+		     HookedData = dl_hooks:apply_hooks(DlDt),
+		     dl_data_to_couch(HookedData);
+		 _Other ->
+		     lager:error("wtf module is this??"),
+		     DlDt = dl_data:new(),
+		     DlDt1 = dl_data:set_code(DlDt, error),
+		     DlDt2 = dl_data:set_data(DlDt1, {no_module, M}), 
+		     DlDt2
+	     end,
+    lager:debug("worker will update doc ~p with result ~p",[DocID,Result]),
     update_couch_doc(DbHandle, DocID, Result).
 
 %%----------------------------------------------------------------------%%
@@ -252,3 +263,30 @@ node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
     lager:debug("bus ~p interrogated.",[BusID]),
     LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
     lists:member(BusID, LocalIDs).
+
+%%----------------------------------------------------------------------%%
+%% @doc dl_data_to_couch just translates a dl_data structure into a 
+%%      couch-friendly representation.  In this case, it is a proplist of
+%%      binary pairs.
+%%----------------------------------------------------------------------%%
+-spec dl_data_to_couch(dl_data:dl_data()) -> [{binary(),binary()}].
+dl_data_to_couch(DlDt) ->
+    case dl_data:get_code(DlDt) of
+	error ->
+	    Ts = dl_data:get_ts(DlDt),
+	    Fn = dl_data:get_final(DlDt),
+	    [
+	     {<<"timestamp">>, Ts},
+	     {<<"final">>, Fn}
+	    ];
+	ok ->
+	    Rs = dl_data:get_data(DlDt),
+	    Ts = dl_data:get_ts(DlDt),
+	    Fn = dl_data:get_final(DlDt),
+	    [
+	     {<<"result">>, Rs},
+	     {<<"timestamp">>, Ts},
+	     {<<"final">>, Fn}
+	    ]
+    end.
+	    
