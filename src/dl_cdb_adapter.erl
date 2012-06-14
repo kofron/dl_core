@@ -113,7 +113,9 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 		       {ok, BFA} = dl_compiler:compile(ChangeData),
 		       MFA = case BFA of
 				 {{prologix, _, _}, F, A} ->
-				     {gen_prologix, F, A}
+				     {gen_prologix, F, A};
+				 {{unix, _, _}, read, A} ->
+				     {gen_os_cmd, execute, A}
 			     end,
 		       case node_is_endpoint(BFA) of
 			   true ->
@@ -227,19 +229,30 @@ strip_rev_no(BinRev) ->
 %%      answer.  
 %%----------------------------------------------------------------------%%
 -spec worker(term(),binary(),couchbeam:db()) -> ok.
-worker({M, F, A}, DocID, DbHandle) ->
+worker({M, F, [_InstrName,ChName|_Rest]=A}, DocID, DbHandle) ->
     Result = case M of
 		 gen_prologix ->
 		     Res = erlang:apply(M,F,A),
 		     DlDt = dl_data:from_prologix(Res),
-		     HookedData = dl_hooks:apply_hooks(DlDt),
+		     HookedData = try
+				      dl_hooks:apply_hooks(ChName,DlDt)
+				  catch
+				      _C:_E ->
+					  DlDt
+				  end,
 		     dl_data_to_couch(HookedData);
-		 _Other ->
-		     lager:error("wtf module is this??"),
+		 gen_os_cmd ->
+		     Res = erlang:apply(M,F,A),
 		     DlDt = dl_data:new(),
-		     DlDt1 = dl_data:set_code(DlDt, error),
-		     DlDt2 = dl_data:set_data(DlDt1, {no_module, M}), 
-		     DlDt2
+		     DlDt2 = dl_data:set_code(DlDt, ok),
+		     DlDt3 = dl_data:set_data(DlDt2, Res),
+		     HookedData = try
+				      dl_hooks:apply_hooks(ChName,DlDt3)
+				  catch
+				      _C:_E ->
+					  DlDt3
+				  end,
+		     dl_data_to_couch(HookedData)
 	     end,
     lager:debug("worker will update doc ~p with result ~p",[DocID,Result]),
     update_couch_doc(DbHandle, DocID, Result).
@@ -259,6 +272,10 @@ update_couch_doc(DbHandle, DocID, Props) ->
 %%      dripline is running on can respond to a given compiled result.
 %%----------------------------------------------------------------------%%
 -spec node_is_endpoint(term()) -> boolean().
+node_is_endpoint({{unix, BusID, _}, _F, _A}) ->
+    lager:debug("bus ~p interrogated.",[BusID]),
+    LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
+    lists:member(BusID, LocalIDs);
 node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
     lager:debug("bus ~p interrogated.",[BusID]),
     LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
