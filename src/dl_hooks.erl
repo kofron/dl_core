@@ -35,7 +35,7 @@
 -spec apply_hooks(binary, dl_ch_data:ch_data()) -> 
 			 dl_ch_data:ch_data().
 apply_hooks(ChName, Data) ->
-    {ok, D} = dl_conf_mgr:lookup(ChName),
+    {ok, D} = dl_conf_mgr:channel_info(ChName),
     {ok, Hooks} = dl_ch_data:get_fields(post_hooks, D),
     case Hooks of
 	[] ->
