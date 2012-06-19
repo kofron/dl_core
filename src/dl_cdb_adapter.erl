@@ -115,7 +115,9 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 				 {{prologix, _, _}, F, A} ->
 				     {gen_prologix, F, A};
 				 {{unix, _, _}, read, A} ->
-				     {gen_os_cmd, execute, A}
+				     {gen_os_cmd, execute, A};
+				 {system, get, heartbeat} ->
+				     BFA
 			     end,
 		       case node_is_endpoint(BFA) of
 			   true ->
@@ -229,6 +231,9 @@ strip_rev_no(BinRev) ->
 %%      answer.  
 %%----------------------------------------------------------------------%%
 -spec worker(term(),binary(),couchbeam:db()) -> ok.
+worker({system, get, heartbeat}, DocID, DbHandle) ->
+    Result = [{<<"result">>,<<"thump">>}],
+    update_couch_doc(DbHandle, DocID, Result);
 worker({M, F, [_InstrName,ChName|_Rest]=A}, DocID, DbHandle) ->
     Result = case M of
 		 gen_prologix ->
@@ -279,7 +284,9 @@ node_is_endpoint({{unix, BusID, _}, _F, _A}) ->
 node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
     lager:debug("bus ~p interrogated.",[BusID]),
     LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
-    lists:member(BusID, LocalIDs).
+    lists:member(BusID, LocalIDs);
+node_is_endpoint({system, get, heartbeat}) ->
+    true.
 
 %%----------------------------------------------------------------------%%
 %% @doc dl_data_to_couch just translates a dl_data structure into a 
