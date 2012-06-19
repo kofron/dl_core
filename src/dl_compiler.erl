@@ -141,6 +141,11 @@ action_tokens() ->
 
 -spec resolve_target(ejson:json_object(),#intermed{}) -> 
 			    {ok, #intermed{}} | dl_error:error().
+resolve_target(JS,#intermed{type=command,do=run}=I) ->
+    Cmd = props:get('doc.command',JS),
+    Cmd2 = props:take(['rate','duration','output'],Cmd),
+    Data = props:to_proplist(Cmd2),
+    {ok, I#intermed{channel=mantis,value=Data}};
 resolve_target(JS,#intermed{type=command,do=get}=I) ->
     case props:get(doc.command.channel,JS) of
 	undefined ->
@@ -163,6 +168,9 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
     end.
 
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
+compile_to_mfa(#intermed{type=command, do=run, value=V}) ->
+    Args = gen_run_params(V),
+    {ok, {gen_os_cmd, execute, [mantis, Args]}};
 compile_to_mfa(#intermed{type=command, do=get, channel=heartbeat}) ->
     {ok, {system, get, heartbeat}};
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
@@ -170,6 +178,14 @@ compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
 compile_to_mfa(#intermed{type=command, do=set, channel=Ch, value=Val}) ->
     {{A, B, C}, D, Args} = dl_conf_mgr:get_write_mfa(Ch),
     {ok, {{A,B,C}, D, Args ++ [Val]}}.
+
+-spec gen_run_params(ejson:json_object()) -> [{atom(), string()}].
+gen_run_params(P) ->
+    lists:map(fun({K,V}) ->
+		      {erlang:binary_to_atom(K,latin1), 
+		       erlang:binary_to_list(V)}
+	      end,
+	      P).
 
 %%%%%%%%%%%%%
 %%% EUNIT %%%
