@@ -170,7 +170,7 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
 compile_to_mfa(#intermed{type=command, do=run, value=V}) ->
     Args = gen_run_params(V),
-    {ok, {gen_os_cmd, execute, [mantis, Args]}};
+    {ok, {{unix, ignatius, 0}, read, [mantis, Args]}};
 compile_to_mfa(#intermed{type=command, do=get, channel=heartbeat}) ->
     {ok, {system, get, heartbeat}};
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
