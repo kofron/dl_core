@@ -23,7 +23,7 @@
 %%%%%%%%%%%%%%%%%%%%%
 %%% API Functions %%%
 %%%%%%%%%%%%%%%%%%%%%
--export([channel_info/1]).
+-export([channel_info/1,channel_info/2]).
 -export([instrument_info/1]).
 -export([local_buses/0,bus_info/1]).
 
@@ -38,6 +38,9 @@ local_buses() ->
 
 channel_info(Ch) ->
     gen_dl_agent:call(?MODULE, {info, ch, Ch}).
+
+channel_info(In,Loc) ->
+    gen_dl_agent:call(?MODULE, {info, ch, {In, Loc}}).
 
 instrument_info(In) ->
     gen_dl_agent:call(?MODULE, {info, in, In}).
@@ -74,6 +77,14 @@ handle_info(_Info, StateData) ->
 
 handle_call(local_bs, _From, StateData) ->
     {reply, get_local_bss(), StateData};
+handle_call({info, ch, {In, Loc}}, _From, StateData) ->
+    Reply = case get_rev_ch_data(In, Loc) of
+		{ok, Data} ->
+		    Data;
+		{error, _Reason}=E ->
+		    E
+	    end,
+    {reply, Reply, StateData};
 handle_call({info, ch, Ch}, _From, StateData) ->
     Reply = case get_ch_data(Ch) of
 		{ok, Data} ->
@@ -215,6 +226,22 @@ get_ch_data(ChName) ->
 	[H] ->
 	    {ok, H}
     end.
+
+-spec get_rev_ch_data(atom(), atom()) -> {ok, dl_ch_data:ch_data()}
+				 | {error, term()}.
+get_rev_ch_data(Instrument, Locator) ->
+    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
+		      dl_ch_data:get_locator(Ch) == Locator,
+		      dl_ch_data:get_instr(Ch) == Instrument]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    case Ans of
+	[] ->
+	    {error, no_ch};
+	[H] ->
+	    {ok, H}
+    end.				       
 
 -spec get_bus_data(atom()) -> {ok, dl_bus_data:bus_data()}
 				 | {error, term()}.
