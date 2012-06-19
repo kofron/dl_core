@@ -135,7 +135,8 @@ resolve_action(JS,#intermed{type=command}=I) ->
 action_tokens() ->
     [
      <<"get">>,
-     <<"set">>
+     <<"set">>,
+     <<"run">>
     ].
 
 -spec resolve_target(ejson:json_object(),#intermed{}) -> 
@@ -162,6 +163,8 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
     end.
 
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
+compile_to_mfa(#intermed{type=command, do=get, channel=heartbeat}) ->
+    {ok, {system, get, heartbeat}};
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
     {ok, dl_conf_mgr:get_read_mfa(Ch)};
 compile_to_mfa(#intermed{type=command, do=set, channel=Ch, value=Val}) ->
