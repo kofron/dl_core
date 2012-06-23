@@ -22,7 +22,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Calibration hooks %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%
--export([kjlc354_cal/1]).
+-export([kjlc354_cal/1, linear_r_to_z/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% Aesthetic hooks %%%
@@ -35,8 +35,8 @@
 -spec apply_hooks(binary, dl_ch_data:ch_data()) -> 
 			 dl_ch_data:ch_data().
 apply_hooks(ChName, Data) ->
-    {ok, D} = dl_conf_mgr:channel_info(ChName),
-    {ok, Hooks} = dl_ch_data:get_fields(post_hooks, D),
+    D = dl_conf_mgr:channel_info(ChName),
+    Hooks = dl_ch_data:get_post_hooks(D),
     case Hooks of
 	[] ->
 	    skip_processing(Data);
@@ -49,7 +49,7 @@ do_apply_hooks(Data, Hooks) ->
 	ok ->
 	    Raw = dl_data:get_data(Data),
 	    Final = lists:foldl(fun(X,Acc) ->
-					apply(dl_hook, X, [Acc]) 
+					apply(dl_hooks, X, [Acc]) 
 				end, Raw, Hooks),
 	    dl_data:set_final(Data, Final);
 	error ->
@@ -75,6 +75,19 @@ strip_newline_chars(Bin) ->
 	_AnyOther ->
 	    Bin
     end.
+
+-spec linear_r_to_z(binary()) -> binary().
+linear_r_to_z(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Z = linear_interp(0.02460529,Raw,-29.12859597),
+    erlang:list_to_binary([erlang:float_to_list(Z)," mm"]).
+
+%%%%%%%%%%%%%%%%
+%%% Internal %%%
+%%%%%%%%%%%%%%%%
+-spec linear_interp(float(), float(), float()) -> float().
+linear_interp(M, X, B) ->
+    M*X + B.
 
 -spec skip_processing(dl_data:dl_data()) -> dl_data:dl_data().
 skip_processing(Data) ->
