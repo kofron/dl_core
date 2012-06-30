@@ -92,3 +92,8 @@ linear_interp(M, X, B) ->
 -spec skip_processing(dl_data:dl_data()) -> dl_data:dl_data().
 skip_processing(Data) ->
     Data.
+
+-spec error_to_json({atom(),atom()}) -> {binary(),binary()}.
+error_to_json({K,V}) ->
+    F = fun erlang:atom_to_binary/2,
+    {F(K,latin1),F(V,latin1)}.
