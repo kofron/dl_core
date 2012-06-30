@@ -53,7 +53,9 @@ do_apply_hooks(Data, Hooks) ->
 				end, Raw, Hooks),
 	    dl_data:set_final(Data, Final);
 	error ->
-	    skip_processing(Data)
+	    Raw = dl_data:get_data(Data),
+	    Final = error_to_proplist(Raw),
+	    dl_data:set_final(Data, Final);
     end.
 
 %%%%%%%%%%%%%%%%%%%
@@ -93,7 +95,9 @@ linear_interp(M, X, B) ->
 skip_processing(Data) ->
     Data.
 
--spec error_to_json({atom(),atom()}) -> {binary(),binary()}.
-error_to_json({K,V}) ->
+error_to_proplist({K, {K1, V1}=V}) ->
     F = fun erlang:atom_to_binary/2,
-    {F(K,latin1),F(V,latin1)}.
+    [{F(K,latin1), error_to_proplist(V)}];
+error_to_proplist({K,V}) ->
+    F = fun erlang:atom_to_binary/2,
+    [{F(K,latin1),F(V,latin1)}].
