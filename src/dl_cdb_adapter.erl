@@ -306,8 +306,9 @@ dl_data_to_couch(DlDt) ->
 	    Ts = dl_data:get_ts(DlDt),
 	    Fn = dl_data:get_final(DlDt),
 	    [
+	     {<<"result">>, <<"error">>},
 	     {<<"timestamp">>, Ts},
-	     {<<"final">>, Fn}
+	     {<<"final">>, {Fn}}
 	    ];
 	ok ->
 	    Rs = dl_data:get_data(DlDt),
