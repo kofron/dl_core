@@ -37,12 +37,7 @@
 apply_hooks(ChName, Data) ->
     D = dl_conf_mgr:channel_info(ChName),
     Hooks = dl_ch_data:get_post_hooks(D),
-    case Hooks of
-	[] ->
-	    skip_processing(Data);
-	SomeHooks ->
-	    do_apply_hooks(Data, SomeHooks)
-    end.
+    do_apply_hooks(Data, Hooks).
 
 do_apply_hooks(Data, Hooks) ->
     case dl_data:get_code(Data) of
@@ -55,7 +50,7 @@ do_apply_hooks(Data, Hooks) ->
 	error ->
 	    Raw = dl_data:get_data(Data),
 	    Final = error_to_proplist(Raw),
-	    dl_data:set_final(Data, Final);
+	    dl_data:set_final(Data, Final)
     end.
 
 %%%%%%%%%%%%%%%%%%%
