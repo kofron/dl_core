@@ -235,6 +235,7 @@ worker({system, get, heartbeat}, DocID, DbHandle) ->
     Result = [{<<"result">>,<<"thump">>}],
     update_couch_doc(DbHandle, DocID, Result);
 worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
+    lager:info("worker has m, f, instr name and ch loc ~p ~p ~p ~p",[M,F,InstrName,ChLoc]),
     Result = case M of
 		 gen_prologix ->
 		     Res = erlang:apply(M,F,A),
@@ -256,8 +257,8 @@ worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
 		     DlDt2 = dl_data:set_code(DlDt, ok),
 		     DlDt3 = dl_data:set_data(DlDt2, Res),
 		     ChInfo = dl_conf_mgr:channel_info(InstrName, ChLoc),
-		     ChName = dl_ch_data:get_id(ChInfo),
 		     HookedData = try
+				      ChName = dl_ch_data:get_id(ChInfo),
 				      dl_hooks:apply_hooks(ChName,DlDt3)
 				  catch
 				      _C:_E ->
