@@ -149,7 +149,7 @@ resolve_target(JS,#intermed{type=command,do=run}=I) ->
 	      Ch ->
 		  erlang:binary_to_atom(Ch, latin1)
 	  end,
-    Cmd2 = props:take(['rate','duration','output'],Cmd),
+    Cmd2 = props:drop(['do','channel'],Cmd),
     Data = props:to_proplist(Cmd2),
     {ok, I#intermed{channel=Tgt,value=Data}};
 resolve_target(JS,#intermed{type=command,do=get}=I) ->
