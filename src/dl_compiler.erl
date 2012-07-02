@@ -143,13 +143,13 @@ action_tokens() ->
 			    {ok, #intermed{}} | dl_error:error().
 resolve_target(JS,#intermed{type=command,do=run}=I) ->
     Cmd = props:get('doc.command',JS),
-    Tgt = case props:get('channel',Cmd) of
+    Tgt = case props:get('subprocess',Cmd) of
 	      undefined ->
 		  mantis;
 	      Ch ->
 		  erlang:binary_to_atom(Ch, latin1)
 	  end,
-    Cmd2 = props:drop(['do','channel'],Cmd),
+    Cmd2 = props:drop(['do','subprocess'],Cmd),
     Data = props:to_proplist(Cmd2),
     {ok, I#intermed{channel=Tgt,value=Data}};
 resolve_target(JS,#intermed{type=command,do=get}=I) ->
