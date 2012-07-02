@@ -81,9 +81,10 @@ init(_Args) ->
 handle_sb_msg({_Ref, dl_cdb_adapter, _Msg}, #state{}=State) ->
     {noreply, State};
 %% All other softbus messages are handled here.
-handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
-    {noreply, State};
 handle_sb_msg({_Ref, _AnyID, {nd, {Instr, Chan}, Data}}, #state{}=SD) ->
+    spawn(fun() -> worker_dt(Instr,Chan,Data) end),
+    {noreply, SD};
+handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
 %% When our streams go down, recuisitate them
@@ -269,6 +270,38 @@ worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
 	     end,
     lager:debug("worker will update doc ~p with result ~p",[DocID,Result]),
     update_couch_doc(DbHandle, DocID, Result).
+
+%%----------------------------------------------------------------------%%
+%% @doc This is a specialized worker for responding to data takers.  It
+%%      takes data *already read* and pushes it up to the data log on 
+%%      the couch database.
+%%----------------------------------------------------------------------%%
+-spec worker_dt(atom(),atom(),binary()) -> ok.
+worker_dt(Instr,Ch,RawData) ->
+    DlDt = dl_data:from_prologix(RawData),
+    ChInfo = dl_conf_mgr:channel_info(Instr, Ch),
+    ChName = dl_ch_data:get_id(ChInfo),
+    HookedData = try
+		     dl_hooks:apply_hooks(ChName,DlDt)
+		 catch
+		     C:E ->
+			 lager:info("failed to apply hooks for channel ~p (~p:~p)",
+				    [ChName,C,E]),
+			 DlDt
+		 end,
+    CouchDoc = dl_data_to_couch(HookedData),
+    post_dt_couch_doc(CouchDoc).
+
+%%----------------------------------------------------------------------%%
+%% @doc Post a data point to couchdb by creating a new document.
+%%----------------------------------------------------------------------%%
+-spec post_dt_couch_doc(term()) -> ok.
+post_dt_couch_doc(CD) ->
+    NewDoc = couchbeam_doc:extend(CD,{[]}),
+    {ok, {Host,Port}} = application:get_env(dl_core, couch_host),
+    DbConn = couchbeam:server_connection(Host,Port),
+    {ok, Db} = couchbeam:open_or_create_db(DbConn,"dripline_logged_data"),
+    {ok, _Doc} = couchbeam:save_doc(Db,NewDoc).
 
 %%----------------------------------------------------------------------%%
 %% @doc Update couch doc with a result.  Pretty straightforward, uses
