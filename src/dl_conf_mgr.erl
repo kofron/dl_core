@@ -26,6 +26,7 @@
 -export([channel_info/1,channel_info/2]).
 -export([instrument_info/1]).
 -export([local_buses/0,bus_info/1]).
+-export([logger_info/1]).
 
 -export([get_read_mfa/1]).
 -export([get_write_mfa/1]).
@@ -41,6 +42,9 @@ channel_info(Ch) ->
 
 channel_info(In,Loc) ->
     gen_dl_agent:call(?MODULE, {info, ch, {In, Loc}}).
+
+logger_info(Channel) ->
+    gen_dl_agent:call(?MODULE, {info, lg, Channel}).
 
 instrument_info(In) ->
     gen_dl_agent:call(?MODULE, {info, in, In}).
@@ -106,6 +110,14 @@ handle_call({info, in, In}, _From, StateData) ->
     {reply, Reply, StateData};
 handle_call({info, bs, Bs}, _From, StateData) ->
     Reply = case get_bus_data(Bs) of
+		{ok, Data} ->
+		    Data;
+		{error, _Reason}=E ->
+		    E
+	    end,
+    {reply, Reply, StateData};
+handle_call({info, lg, Ch}, _From, StateData) ->
+    Reply = case get_dt_data(Ch) of
 		{ok, Data} ->
 		    Data;
 		{error, _Reason}=E ->
@@ -242,6 +254,22 @@ get_ch_data(ChName) ->
     case Ans of
 	[] ->
 	    {error, no_channel};
+	[H] ->
+	    {ok, H}
+    end.
+
+-spec get_dt_data(atom()) -> {ok, dl_dt_data:dt_data()}
+				 | {error, term()}.
+get_dt_data(ChName) ->
+    Qs = qlc:q([Dt || Dt <- mnesia:table(dl_dt_data),
+		      dl_dt_data:get_channel(Dt) == ChName
+	       ]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    case Ans of
+	[] ->
+	    {error, no_logger};
 	[H] ->
 	    {ok, H}
     end.
