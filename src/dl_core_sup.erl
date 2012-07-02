@@ -25,6 +25,8 @@ start_link() ->
 
 init([]) ->
     Compiler = ?CHILD(dl_compiler, worker),
+    
+    DTSup = ?CHILD(dl_data_taker_sup, supervisor),
 
     ConfMgr = {
       dl_conf_mgr,
@@ -52,7 +54,7 @@ init([]) ->
       [dl_cdb_adapter]
      },
 
-    Children = [Compiler, ConfMgr,CdbAdapter],
+    Children = [Compiler, ConfMgr,CdbAdapter, DTSup],
 
     {ok, { {one_for_one, 5, 10}, Children} }.
 
