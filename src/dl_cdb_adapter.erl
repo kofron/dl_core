@@ -82,6 +82,8 @@ handle_sb_msg({_Ref, dl_cdb_adapter, _Msg}, #state{}=State) ->
     {noreply, State};
 %% All other softbus messages are handled here.
 handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
+    {noreply, State};
+handle_sb_msg({_Ref, _AnyID, {nd, {Instr, Chan}, Data}}, #state{}=SD) ->
     {noreply, State}.
 
 %% When our streams go down, recuisitate them
