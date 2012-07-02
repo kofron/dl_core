@@ -30,12 +30,12 @@ start_link(TgtChanId, Interval) ->
     Args = [ID, TgtChanId, Interval],
     gen_dl_agent:start_link(?MODULE,ID,Args).
 
-init([_ID, TgtChan, _Interval]=Args) ->
+init([_ID, _CMod, ID, TgtChan, Interval]=Args) ->
     case dl_conf_mgr:channel_info(TgtChan) of
 	{error, no_channel} ->
 	    problematic_startup(Args);
 	ChannelData ->
-	    normal_startup([ChannelData|Args])
+	    normal_startup([ChannelData,ID,TgtChan,Interval])
     end.
 
 problematic_startup(_Args) ->
