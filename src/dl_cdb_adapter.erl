@@ -289,7 +289,7 @@ worker_dt(Instr,Ch,RawData) ->
 				    [ChName,C,E]),
 			 DlDt
 		 end,
-    CouchDoc = dl_data_to_couch(HookedData),
+    CouchDoc = dl_dt_data_to_couch(ChName,HookedData),
     post_dt_couch_doc(CouchDoc).
 
 %%----------------------------------------------------------------------%%
@@ -353,6 +353,27 @@ dl_data_to_couch(DlDt) ->
 	     {<<"result">>, Rs},
 	     {<<"timestamp">>, Ts},
 	     {<<"final">>, Fn}
+	    ]
+    end.
+
+%%----------------------------------------------------------------------%%
+%% @doc dl_dt_data_to_couch just translates a dl_data structure into a 
+%%      couch-friendly representation.  In this case, it is a proplist of
+%%      binary pairs and has been collected by a data taker.
+%%----------------------------------------------------------------------%%
+-spec dl_dt_data_to_couch(atom(),dl_data:dl_data()) -> [{binary(),binary()}].
+dl_dt_data_to_couch(Name,DlDt) ->
+    SName = erlang:atom_to_binary(Name,latin1),
+    case dl_data:get_code(DlDt) of
+	ok ->
+	    Rs = dl_data:get_data(DlDt),
+	    Ts = dl_data:get_ts(DlDt),
+	    Fn = dl_data:get_final(DlDt),
+	    [
+	     {<<"sensor_name">>, SName},
+	     {<<"uncalibrated_value">>, Rs},
+	     {<<"timestamp_localstring">>, Ts},
+	     {<<"calibrated_value">>, Fn}
 	    ]
     end.
 	    
