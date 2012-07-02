@@ -11,7 +11,7 @@
 % The behavior info
 -export([behaviour_info/1]).
 
--export([init/1,start_link/2]).
+-export([init/1,start_link/2, start_link/3]).
 -export([call/2,cast/2]).
 -export([handle_call/3,handle_cast/2,terminate/2,code_change/3,handle_info/2]).
 
@@ -43,7 +43,10 @@ cast(AgentRef, Cast) ->
 start_link(CallbackMod, ID) ->
     gen_server:start_link({local, ID}, ?MODULE, [ID,CallbackMod], []).
 
-init([_ID,CallbackMod]=Args) ->
+start_link(CallbackMod, ID, Args) ->
+    gen_server:start_link({local, ID}, ?MODULE, [ID,CallbackMod|Args], []).
+
+init([_ID,CallbackMod|_Rest]=Args) ->
     case CallbackMod:init(Args) of
 	{ok, ModStateData} ->
 	    dl_softbus:attach(agents),
