@@ -146,7 +146,8 @@ terminate(_Reason, _StateData) ->
 create_mnesia_tables() ->
     ok = create_ch_data_table(),
     ok = create_instr_data_table(),
-    ok = create_bus_data_table().
+    ok = create_bus_data_table(),
+    ok = create_dt_data_table().
 
 -spec create_ch_data_table() -> ok | term().
 create_ch_data_table() ->
@@ -188,6 +189,21 @@ create_bus_data_table() ->
 	{atomic, ok} ->
 	    ok;
 	{aborted,{already_exists,dl_bus_data}} ->
+	    ok;
+	AnyOther ->
+	    AnyOther
+    end.
+
+-spec create_dt_data_table() -> ok | term().
+create_dt_data_table() ->
+    case mnesia:create_table(dl_dt_data,
+			     [
+			      {ram_copies, [node()]},
+			      {attributes, dl_dt_data:fields()}
+			     ]) of
+	{atomic, ok} ->
+	    ok;
+	{aborted,{already_exists,dl_dt_data}} ->
 	    ok;
 	AnyOther ->
 	    AnyOther
