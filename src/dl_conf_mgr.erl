@@ -70,7 +70,10 @@ handle_sb_msg({_Ref, ?MODULE, _Msg}, #state{}=State) ->
 handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
     lager:debug("cdb adapter got sb msg: ~p",[Msg]),
     maybe_update_tables(Msg),
+    {noreply, State};
+handle_sb_msg({_Ref, _AnyID, Msg}, #state{}=State) ->
     {noreply, State}.
+
 
 handle_info(_Info, StateData) ->
     {noreply, StateData}.
