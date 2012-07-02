@@ -143,13 +143,13 @@ action_tokens() ->
 			    {ok, #intermed{}} | dl_error:error().
 resolve_target(JS,#intermed{type=command,do=run}=I) ->
     Cmd = props:get('doc.command',JS),
-    Tgt = case props:get('channel',Cmd) of
+    Tgt = case props:get('subprocess',Cmd) of
 	      undefined ->
 		  mantis;
 	      Ch ->
 		  erlang:binary_to_atom(Ch, latin1)
 	  end,
-    Cmd2 = props:take(['rate','duration','output'],Cmd),
+    Cmd2 = props:drop(['do','subprocess'],Cmd),
     Data = props:to_proplist(Cmd2),
     {ok, I#intermed{channel=Tgt,value=Data}};
 resolve_target(JS,#intermed{type=command,do=get}=I) ->
@@ -174,9 +174,9 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
     end.
 
 -spec compile_to_mfa(#intermed{}) -> {ok, term()}.
-compile_to_mfa(#intermed{type=command, do=run, value=V}) ->
+compile_to_mfa(#intermed{type=command, do=run, value=V, channel=Ch}) ->
     Args = gen_run_params(V),
-    {ok, {{unix, ignatius, 0}, read, [mantis, Args]}};
+    {ok, {{unix, ignatius, 0}, read, [Ch, Args]}};
 compile_to_mfa(#intermed{type=command, do=get, channel=heartbeat}) ->
     {ok, {system, get, heartbeat}};
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
