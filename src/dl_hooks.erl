@@ -162,7 +162,9 @@ cernox33122_points() ->
 
 -spec cernox43022_points() -> [{float(), float()}].
 cernox43022_points() ->
-    Raw = [{300,68.6},{78,248},{4.2,3771}],
+    Raw = [{68.6,300},
+	   {248,78},
+	   {3771,4.2}],
     lists:map(fun({X,Y}) ->
 		      {math:log(X),math:log(Y)}
 	      end,
@@ -170,11 +172,11 @@ cernox43022_points() ->
 
 -spec cernox01912_points() -> [{float(), float()}].
 cernox01912_points() ->
-    Raw = [{297,45.5},
-	   {77,167.5},
-           {40,310.9},
-           {39,318.2},
-           {28,433.4}],
+    Raw = [{45.5,297},
+	   {167.5,77},
+           {310.9,40},
+           {318.2,39},
+           {433.4,28}],
     lists:map(fun({X,Y}) ->
 		      {math:log(X),math:log(Y)}
 	      end,
