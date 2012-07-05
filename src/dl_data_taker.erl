@@ -41,6 +41,7 @@ normal_startup([ChData, ID, Interval]=_Args) ->
       ival = Interval,
       tref = TRef
      },
+    dl_softbus:bcast(agents, self(), {dtb, ID, ChData, Interval}),
     {ok, InitialState}.
 
 handle_call(_Request, _From, State) ->
@@ -61,7 +62,7 @@ handle_info(do_record, #state{ival=I,tgt=T}=SD) ->
 		 
 handle_sb_msg({_Ref, Id, _Msg}, #state{id=Id}=State) ->
     {noreply, State};
-handle_sb_msg({_Ref, _OtherId, Msg}, #state{id=Id}=State) ->
+handle_sb_msg({_Ref, _OtherId, _Msg}, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
