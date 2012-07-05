@@ -74,7 +74,11 @@ handle_sb_msg({_Ref, ?MODULE, _Msg}, #state{}=State) ->
 handle_sb_msg({_Ref, dl_cdb_adapter, Msg}, #state{}=State) ->
     maybe_update_tables(Msg),
     {noreply, State};
-handle_sb_msg({_Ref, _AnyID, Msg}, #state{}=State) ->
+handle_sb_msg({_Ref, Pid, {dtb, _LgId, ChData, _Ival}}, State) ->		    
+    ChName = dl_ch_data:get_id(ChData),
+    record_logger_pid(ChName, Pid),
+    {noreply, State};
+handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
 
@@ -482,6 +486,7 @@ add_logger(DtData) ->
 		mnesia:write(DtData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
+    maybe_start_logger(DtData),
     dl_softbus:bcast(agents, ?MODULE, {ndt, DtData}).
 
 -spec update_logger(dl_dt_data:dt_data()) -> ok.
@@ -513,7 +518,7 @@ start_logging(DtData) ->
     Ival = dl_dt_data:get_interval(DtData),
     case supervisor:start_child(dl_data_taker_sup,[ChData,Ival]) of
 	{ok, Pid} ->
-	    record_logger_pid(ChName,Pid);
+	    ok; % no longer do record_logger_pid(ChName,Pid);
 	{error, Reason} ->
 	    lager:info("failed to start logger for reason: ~p",[Reason])
     end.
@@ -523,7 +528,7 @@ record_logger_pid(ChName,LgPid) ->
     Qs = qlc:q([Lg || Lg <- mnesia:table(dl_dt_data),
 		      dl_dt_data:get_channel(Lg) == ChName]),
     {atomic, ok} = mnesia:transaction(fun() ->
-					       Dt = qlc:e(Qs),
+					       [Dt] = qlc:e(Qs),
 					       Dtp = dl_dt_data:set_pid(Dt,LgPid),
 					       mnesia:write(Dtp)
 				       end),
