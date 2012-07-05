@@ -356,6 +356,8 @@ maybe_update_tables(Msg) ->
 	    update_instrument_table(Msg);
 	<<"bus">> ->
 	    update_bus_table(Msg);
+	<<"logger">> ->
+	    update_logger_table(Msg);
 	Other ->
 	    declare_nonsense(Msg)
     end.
@@ -378,6 +380,12 @@ update_bus_table(Msg) ->
     {ok, BsData} = dl_bus_data:from_json(Doc),
     maybe_add_or_update_bus(BsData).
 
+-spec update_logger_table(ejson:json_object()) -> ok.
+update_logger_table(Msg) ->
+    Doc = props:get('doc',Msg),
+    {ok, DtData} = dl_dt_data:from_json(Doc),
+    maybe_add_or_update_logger(DtData).
+
 -spec declare_nonsense(ejson:json_object()) -> ok.
 declare_nonsense(Msg) ->
     lager:debug("unhandled msg recvd by conf mgr: ~p",[Msg]).
@@ -393,6 +401,19 @@ maybe_add_or_update_channel(ChData) ->
 	{ok, NewChData} ->
 	    lager:info("overwriting conf for channel: ~p",[NewChData]),
 	    update_channel(NewChData)
+    end.
+
+-spec maybe_add_or_update_logger(dl_dt_data:ch_data()) -> ok.
+maybe_add_or_update_logger(LgData) ->
+    case get_dt_data(dl_dt_data:get_channel(LgData)) of
+	{error, no_logger} ->
+	    lager:info("new logger recvd: ~p",[LgData]),
+	    add_logger(LgData);
+	{ok, LgData} ->
+	    lager:debug("ignoring redundant logger conf");
+	{ok, NewLgData} ->
+	    lager:info("overwriting conf for logger: ~p",[NewLgData]),
+	    update_logger(NewLgData)
     end.
 
 -spec maybe_add_or_update_bus(dl_bus_data:bus_data()) -> ok.
@@ -455,6 +476,63 @@ add_channel(ChData) ->
     {atomic, ok} = mnesia:transaction(F),
     dl_softbus:bcast(agents, ?MODULE, {nch, ChData}).
 
+-spec add_logger(dl_dt_data:dt_data()) -> ok.
+add_logger(DtData) ->
+    F = fun() ->
+		mnesia:write(DtData)
+	end,
+    {atomic, ok} = mnesia:transaction(F),
+    dl_softbus:bcast(agents, ?MODULE, {ndt, DtData}).
+
+-spec update_logger(dl_dt_data:dt_data()) -> ok.
+update_logger(DtData) ->
+    F = fun() ->
+		mnesia:write(DtData)
+	end,
+    {atomic, ok} = mnesia:transaction(F),
+    dl_softbus:bcast(agents, ?MODULE, {udt, DtData}).
+
+-spec maybe_start_logger(dl_dt_data:dl_dt_data()) -> ok.
+maybe_start_logger(DtData) ->
+    ChName = dl_dt_data:get_channel(DtData),
+    case is_local_channel(ChName) of
+	true ->
+	    start_logging(DtData);
+	false ->
+	    do_nothing
+    end.
+
+-spec is_local_channel(atom()) -> boolean().
+is_local_channel(ChName) ->
+    true.
+
+-spec start_logging(dl_dt_data:dl_dt_data()) -> pid().
+start_logging(DtData) ->			   
+    ChName = dl_dt_data:get_channel(DtData),
+    {ok, ChData} = get_ch_data(ChName),
+    Ival = dl_dt_data:get_interval(DtData),
+    case supervisor:start_child(dl_data_taker_sup,[ChData,Ival]) of
+	{ok, Pid} ->
+	    record_logger_pid(ChName,Pid);
+	{error, Reason} ->
+	    lager:info("failed to start logger for reason: ~p",[Reason])
+    end.
+
+-spec record_logger_pid(atom(),pid()) -> ok.
+record_logger_pid(ChName,LgPid) ->
+    Qs = qlc:q([Lg || Lg <- mnesia:table(dl_dt_data),
+		      dl_dt_data:get_channel(Lg) == ChName]),
+    {atomic, ok} = mnesia:transaction(fun() ->
+					       Dt = qlc:e(Qs),
+					       Dtp = dl_dt_data:set_pid(Dt,LgPid),
+					       mnesia:write(Dtp)
+				       end),
+    start_logger_monitor(LgPid).
+		
+-spec start_logger_monitor(pid()) -> ok.
+start_logger_monitor(LgPid) ->
+    erlang:monitor(process, LgPid).
+   
 -spec update_channel(dl_ch_data:ch_data()) -> ok.
 update_channel(ChData) ->
     F = fun() ->
