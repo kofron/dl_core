@@ -10,7 +10,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Data munging functions %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--export([binary_to_atom/1, binary_to_float/1]).
+-export([binary_to_atom/1, binary_to_float/1, binary_to_integer/1]).
 
 %%---------------------------------------------------------------------%%
 %% @doc make_ts converts the current time as reported by the erlang VM
@@ -45,6 +45,16 @@ binary_to_atom(Binary) ->
 -spec binary_to_float(binary()) -> float().
 binary_to_float(Binary) ->
 	erlang:list_to_float(erlang:binary_to_list(Binary)).
+
+%%---------------------------------------------------------------------%%
+%% @doc binary_to_integer converts a binary string with an integer
+%%      value into that integer value.
+%%      e.g. <<"150">> -> 150.
+%% @end
+%%---------------------------------------------------------------------%%
+-spec binary_to_integer(binary()) -> integer().
+binary_to_integer(Binary) ->
+	erlang:list_to_integer(erlang:binary_to_list(Binary)).
 
 %%---------------------------------------------------------------------%%
 %% @doc node_name returns the name of the node that we are running on.
