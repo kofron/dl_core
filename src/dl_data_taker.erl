@@ -25,23 +25,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% gen_server API and callback definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-start_link(TgtChanId, Interval) ->
-    ID = gen_dt_id(TgtChanId),
-    Args = [ID, TgtChanId, Interval],
+start_link(TgtChanData, Interval) ->
+    ID = gen_dt_id(dl_ch_data:get_id(TgtChanData)),
+    Args = [ID, TgtChanData, Interval],
     gen_dl_agent:start_link(?MODULE,ID,Args).
 
-init([_ID, _CMod, ID, TgtChan, Interval]=Args) ->
-    case dl_conf_mgr:channel_info(TgtChan) of
-	{error, no_channel} ->
-	    problematic_startup(Args);
-	ChannelData ->
-	    normal_startup([ChannelData,ID,TgtChan,Interval])
-    end.
+init([_ID, _CMod, ID, TgtChanData, Interval]) ->
+    normal_startup([TgtChanData,ID,Interval]).
 
-problematic_startup(_Args) ->
-    {error, nostart}.
-
-normal_startup([ChData, ID, _TgtChan, Interval]=_Args) ->
+normal_startup([ChData, ID, Interval]=_Args) ->
     TRef = start_countdown(Interval),
     InitialState = #state{
       id = ID,
@@ -70,7 +62,6 @@ handle_info(do_record, #state{ival=I,tgt=T}=SD) ->
 handle_sb_msg({_Ref, Id, _Msg}, #state{id=Id}=State) ->
     {noreply, State};
 handle_sb_msg({_Ref, _OtherId, Msg}, #state{id=Id}=State) ->
-    dl_softbus:bcast(agents, Id, Msg),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
