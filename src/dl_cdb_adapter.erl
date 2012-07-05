@@ -101,7 +101,7 @@ handle_info({change, R, {done, _LastSeq}},
 handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=Revs}=State) ->
     NewState = case ignore_update_rev(ChangeData, Revs) of
 		   true ->
-		       ok;
+		       State;
 		   false ->
 		       dl_softbus:bcast(agents, ?MODULE, ChangeData),
 		       State#state{revs=update_rev_data(ChangeData,Revs)}
