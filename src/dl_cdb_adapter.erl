@@ -238,7 +238,6 @@ worker({system, get, heartbeat}, DocID, DbHandle) ->
     Result = [{<<"result">>,<<"thump">>}],
     update_couch_doc(DbHandle, DocID, Result);
 worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
-    lager:info("worker has m, f, instr name and ch loc ~p ~p ~p ~p",[M,F,InstrName,ChLoc]),
     Result = case M of
 		 gen_prologix ->
 		     Res = erlang:apply(M,F,A),
