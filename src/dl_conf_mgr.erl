@@ -486,7 +486,12 @@ add_logger(DtData) ->
 		mnesia:write(DtData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    maybe_start_logger(DtData), 
+    try 
+	maybe_start_logger(DtData)
+    catch
+	C:E ->
+	    lager:info("couldn't start logger for ~p: (~p~p)",[DtData,C,E])
+    end,
     dl_softbus:bcast(agents, ?MODULE, {ndt, DtData}).
 
 -spec update_logger(dl_dt_data:dt_data()) -> ok.
