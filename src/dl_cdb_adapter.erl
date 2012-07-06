@@ -235,7 +235,7 @@ strip_rev_no(BinRev) ->
 %%----------------------------------------------------------------------%%
 -spec worker(term(),binary(),couchbeam:db()) -> ok.
 worker({system, get, heartbeat}, DocID, DbHandle) ->
-    Result = [{<<"result">>,<<"thump">>}],
+    Result = [{<<"result">>,<<"thump">>},{<<"final">>,<<"thump">>}],
     update_couch_doc(DbHandle, DocID, Result);
 worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
     Result = case M of
