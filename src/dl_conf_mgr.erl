@@ -245,6 +245,15 @@ instr_on_bus(BusName) ->
 				       end),
     Ans.
 
+-spec chs_on_instr(atom()) -> [dl_ch_data:ch_data()].
+chs_on_instr(InstrName) ->
+    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
+		      dl_ch_data:get_instr(Ch) == InstrName]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    Ans.
+
 -spec get_ch_data(atom()) -> {ok, dl_ch_data:ch_data()}
 				 | {error, term()}.
 get_ch_data(ChName) ->
