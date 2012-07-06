@@ -403,7 +403,7 @@ maybe_add_or_update_channel(ChData) ->
 	{ok, ChData} ->
 	    lager:debug("ignoring redundant channel conf");
 	{ok, NewChData} ->
-	    lager:info("overwriting conf for channel: ~p",[NewChData]),
+	    lager:debug("overwriting conf for channel: ~p",[NewChData]),
 	    update_channel(NewChData)
     end.
 
@@ -416,7 +416,7 @@ maybe_add_or_update_logger(LgData) ->
 	{ok, LgData} ->
 	    lager:debug("ignoring redundant logger conf");
 	{ok, NewLgData} ->
-	    lager:info("overwriting conf for logger: ~p",[NewLgData]),
+	    lager:debug("overwriting conf for logger: ~p",[NewLgData]),
 	    update_logger(NewLgData)
     end.
 
@@ -429,7 +429,7 @@ maybe_add_or_update_bus(ChData) ->
 	{ok, ChData} ->
 	    lager:debug("ignoring redundant bus conf");
 	{ok, NewChData} ->
-	    lager:info("overwriting conf for bus: ~p",[NewChData]),
+	    lager:debug("overwriting conf for bus: ~p",[NewChData]),
 	    update_bus(NewChData)
     end.
 
@@ -442,7 +442,7 @@ maybe_add_or_update_instrument(InData) ->
 	{ok, InData} ->
 	    lager:debug("ignoring redundant instrument conf");
 	{ok, NewInData} ->
-	    lager:info("overwriting conf for instrument: ~p",[NewInData]),
+	    lager:debug("overwriting conf for instrument: ~p",[NewInData]),
 	    update_instrument(NewInData)
     end.
 		
@@ -486,7 +486,7 @@ add_logger(DtData) ->
 		mnesia:write(DtData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    maybe_start_logger(DtData),
+    maybe_start_logger(DtData), 
     dl_softbus:bcast(agents, ?MODULE, {ndt, DtData}).
 
 -spec update_logger(dl_dt_data:dt_data()) -> ok.
@@ -509,7 +509,14 @@ maybe_start_logger(DtData) ->
 
 -spec is_local_channel(atom()) -> boolean().
 is_local_channel(ChName) ->
-    true.
+    {ok, Dt} = get_ch_data(ChName),
+    is_local_instr(dl_ch_data:get_instr(Dt)).
+
+-spec is_local_instr(atom()) -> boolean().
+is_local_instr(InstrName) ->
+    {ok, Dt} = get_instr_data(InstrName),
+    {_, BusName, _} = dl_instr_data:get_bus(Dt),
+    lists:member(BusName, get_local_bss()).
 
 -spec start_logging(dl_dt_data:dl_dt_data()) -> pid().
 start_logging(DtData) ->			   
