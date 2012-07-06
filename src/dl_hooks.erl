@@ -64,7 +64,9 @@ do_apply_hooks(Data, Hooks) ->
 -spec force_positive(binary()) -> binary().
 force_positive(<<"-",Rest/binary>>) ->
     A = <<"+">>,
-    <<A/binary, Rest/binary>>.
+    <<A/binary, Rest/binary>>;
+force_positive(Other) ->
+    Other.
 
 -spec kjlc354_cal(binary()) -> binary().
 kjlc354_cal(<<Val:15/binary,_Rest/binary>>) ->
