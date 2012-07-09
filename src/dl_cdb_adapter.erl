@@ -341,9 +341,21 @@ node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
 node_is_endpoint({system, get, heartbeat}) ->
     true;
 node_is_endpoint({dl_sys, start_loggers, Args}) ->
-    true;
+    lists:foldl(fun(_Ch, false) ->
+			false;
+		   (Ch, true) ->
+			dl_conf_mgr:is_local_channel(Ch)
+		end,
+		true, 
+		Args);
 node_is_endpoint({dl_sys, stop_loggers, Args}) ->
-    true;
+    lists:foldl(fun(_Ch, false) ->
+			false;
+		   (Ch, true) ->
+			dl_conf_mgr:is_local_channel(Ch)
+		end,
+		true, 
+		Args);
 node_is_endpoint({dl_sys, current_loggers, []}) ->
     true.
 
