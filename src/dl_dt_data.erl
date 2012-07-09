@@ -72,9 +72,12 @@ set_channel(#dl_dt_data{}=Dt,NewCh) when is_atom(NewCh) ->
 set_interval(#dl_dt_data{}=Dt,NewIval) when is_integer(NewIval) ->
     Dt#dl_dt_data{interval=NewIval}.
 
--spec set_pid(dt_data(),pid()) -> dt_data().
+-spec set_pid(dt_data(),pid() | undefined) -> dt_data().
 set_pid(#dl_dt_data{}=Dt,NewPid) when is_pid(NewPid) ->
-    Dt#dl_dt_data{pid=NewPid}.
+    Dt#dl_dt_data{pid=NewPid};
+set_pid(#dl_dt_data{}=Dt,undefined) ->
+    Dt#dl_dt_data{pid=undefined}.
+
 
 %%%%%%%%%%%%%%%
 %%% Testing %%% 
