@@ -28,6 +28,19 @@ init([]) ->
     
     DTSup = ?CHILD(dl_data_taker_sup, supervisor),
 
+    SysMgr = {
+      dl_sys,
+      {
+	dl_sys,
+	start_link,
+	[dl_sys,[]]
+      },
+      permanent,
+      5000,
+      worker,
+      [dl_sys]
+     },
+
     ConfMgr = {
       dl_conf_mgr,
       {
@@ -54,7 +67,7 @@ init([]) ->
       [dl_cdb_adapter]
      },
 
-    Children = [Compiler, ConfMgr,CdbAdapter, DTSup],
+    Children = [Compiler, ConfMgr,CdbAdapter, SysMgr, DTSup],
 
     {ok, { {one_for_one, 5, 10}, Children} }.
 
