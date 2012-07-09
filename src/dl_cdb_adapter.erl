@@ -120,7 +120,9 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 				 {{unix, _, _}, read, A} ->
 				     {gen_os_cmd, execute, A};
 				 {system, get, heartbeat} ->
-				     BFA
+				     BFA;
+				 Other ->
+				     Other
 			     end,
 		       case node_is_endpoint(BFA) of
 			   true ->
@@ -237,6 +239,9 @@ strip_rev_no(BinRev) ->
 worker({system, get, heartbeat}, DocID, DbHandle) ->
     Result = [{<<"result">>,<<"thump">>},{<<"final">>,<<"thump">>}],
     update_couch_doc(DbHandle, DocID, Result);
+worker({dl_sys=M, F, A}, DocID, DbHandle) ->
+    Res = dl_data_to_couch(do_dl_sys(M,F,A)),
+    update_couch_doc(DbHandle,DocID,Res);
 worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
     Result = case M of
 		 gen_prologix ->
@@ -311,7 +316,14 @@ post_dt_couch_doc(CD) ->
 update_couch_doc(DbHandle, DocID, Props) ->
     {ok, Doc} = couchbeam:open_doc(DbHandle, DocID),
     NewDoc = couchbeam_doc:extend(Props, Doc),
-    {ok, _} = couchbeam:save_doc(DbHandle, NewDoc).
+    case couchbeam:save_doc(DbHandle, NewDoc) of
+	{ok, _} ->
+	    ok;
+	{error, conflict} ->
+	    ok;
+	{error, _Other}=Err ->
+	    Err
+    end.
 
 %%----------------------------------------------------------------------%%
 %% @doc Interrogate the configuration manager to determine if the node
@@ -327,7 +339,70 @@ node_is_endpoint({{prologix, BusID, _}, _F, _A}) ->
     LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
     lists:member(BusID, LocalIDs);
 node_is_endpoint({system, get, heartbeat}) ->
+    true;
+node_is_endpoint({dl_sys, start_loggers, Args}) ->
+    true;
+node_is_endpoint({dl_sys, stop_loggers, Args}) ->
+    true;
+node_is_endpoint({dl_sys, current_loggers, []}) ->
     true.
+
+%%----------------------------------------------------------------------%%
+%% @doc do_dl_sys goes out to the system, performs a task, and then 
+%%      coerces the result into something appropriate for couch.
+%%----------------------------------------------------------------------%%
+-spec do_dl_sys(atom(),atom(),[atom()]) -> ejson:json_object().
+do_dl_sys(dl_sys=M,start_loggers=F,A) ->
+    Res = erlang:apply(M,F,[A]),
+    Dt = dl_data:new(),
+    dl_sys_loggers_to_couch(Res,Dt);
+do_dl_sys(dl_sys=M,stop_loggers=F,A) ->
+    Res = erlang:apply(M,F,[A]),
+    Dt = dl_data:new(),
+    dl_sys_loggers_to_couch(Res,Dt);
+do_dl_sys(dl_sys=M,current_loggers=F,[]) ->
+    Res = erlang:apply(M,F,[]),
+    Dt = dl_data:new(),
+    LgList = lists:map(fun(X) ->
+			       erlang:atom_to_binary(X,latin1)
+		       end,
+		       Res),
+    dl_sys_logger_list_to_couch(LgList, Dt).
+
+-spec dl_sys_logger_list_to_couch([binary()],dl_data:dl_data()) ->
+					 ejson:json_object().
+dl_sys_logger_list_to_couch(LgList, Data) ->
+    Dt = dl_data:set_data(Data,LgList),
+    Dt2 = dl_data:set_code(Dt,ok),
+    dl_data:set_ts(Dt2,dl_util:make_ts()).
+
+-spec dl_sys_loggers_to_couch([{atom(), atom() | {atom(), atom()}}],
+			      dl_data:dl_data()) ->
+				     ejson:json_object().
+dl_sys_loggers_to_couch(Result, Data) ->
+    {Code, ResProps} = dl_sys_loggers_result_to_props(Result),
+    Dt = dl_data:set_data(Data, {ResProps}),
+    Dt2 = dl_data:set_code(Dt, Code),
+    dl_data:set_ts(Dt2, dl_util:make_ts()).
+
+dl_sys_loggers_result_to_props(Res) ->
+    dl_sys_loggers_result_to_props(Res, []).
+dl_sys_loggers_result_to_props([],Acc) ->
+    {ok, Acc};
+dl_sys_loggers_result_to_props([{_A,B}=Tup|T],Acc) when is_atom(B) ->
+    dl_sys_loggers_result_to_props(T,[encode_tuple(Tup)|Acc]);
+dl_sys_loggers_result_to_props([{A,{error, {already_started, _}}}|T],Acc) ->
+    Tup = {erlang:atom_to_binary(A,latin1),{[encode_tuple({error,already_started})]}},
+    dl_sys_loggers_result_to_props(T,[Tup|Acc]);
+dl_sys_loggers_result_to_props([{A,{error, no_logger}}|T],Acc) ->
+    Tup = {erlang:atom_to_binary(A,latin1),{[encode_tuple({error,no_logger_conf})]}},
+    dl_sys_loggers_result_to_props(T,[Tup|Acc]);
+dl_sys_loggers_result_to_props([H|T],Acc) when is_atom(H) ->
+    dl_sys_loggers_result_to_props(T,[erlang:atom_to_binary(H,latin1)|Acc]).
+
+encode_tuple({A,B})->
+    {erlang:atom_to_binary(A,latin1), erlang:atom_to_binary(B,latin1)}.
+
 
 %%----------------------------------------------------------------------%%
 %% @doc dl_data_to_couch just translates a dl_data structure into a 
