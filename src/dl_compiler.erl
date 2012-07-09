@@ -136,11 +136,22 @@ action_tokens() ->
     [
      <<"get">>,
      <<"set">>,
-     <<"run">>
+     <<"run">>,
+     <<"syscmd">>
     ].
 
 -spec resolve_target(ejson:json_object(),#intermed{}) -> 
 			    {ok, #intermed{}} | dl_error:error().
+resolve_target(JS,#intermed{type=command,do=syscmd}=I) ->
+    Cmd = props:get('doc.command',JS),
+    Tgt = case props:get('action',Cmd) of
+	      undefined ->
+		  dl_error:field_undefined(compiler, action);
+	      Act ->
+		  erlang:binary_to_atom(Act, latin1)
+	  end,
+    Cmd2 = props:drop(['do','action'], Cmd),
+    {ok, I#intermed{channel=Tgt,value=props:get('args',Cmd2)}};
 resolve_target(JS,#intermed{type=command,do=run}=I) ->
     Cmd = props:get('doc.command',JS),
     Tgt = case props:get('subprocess',Cmd) of
@@ -177,6 +188,14 @@ resolve_target(JS,#intermed{type=command,do=set}=I) ->
 compile_to_mfa(#intermed{type=command, do=run, value=V, channel=Ch}) ->
     Args = gen_run_params(V),
     {ok, {{unix, ignatius, 0}, read, [Ch, Args]}};
+compile_to_mfa(#intermed{type=command, do=syscmd, value=V, channel=start_loggers}) ->
+    Args = lists:map(fun(X) -> erlang:binary_to_atom(X,latin1) end, V),
+    {ok, {dl_sys, start_loggers, Args}};
+compile_to_mfa(#intermed{type=command, do=syscmd, value=V, channel=stop_loggers}) ->
+    Args = lists:map(fun(X) -> erlang:binary_to_atom(X,latin1) end, V),
+    {ok, {dl_sys, stop_loggers, Args}};
+compile_to_mfa(#intermed{type=command, do=syscmd, channel=current_loggers}) ->
+    {ok, {dl_sys, current_loggers, []}};
 compile_to_mfa(#intermed{type=command, do=get, channel=heartbeat}) ->
     {ok, {system, get, heartbeat}};
 compile_to_mfa(#intermed{type=command, do=get, channel=Ch}) ->
