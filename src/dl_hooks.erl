@@ -206,6 +206,7 @@ error_to_proplist({K,V}) ->
 -include_lib("eunit/include/eunit.hrl").
 
 cernox33122_test() ->
+    Delta = 1.0E-03,
     ?assert(do_cernox_cal(57.6,cernox33122_points()) - 300 < Delta),
     ?assert(do_cernox_cal(598,cernox33122_points()) - 20 < Delta).
 
