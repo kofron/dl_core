@@ -8,6 +8,7 @@
 %%%%%%%%%%%
 %%% API %%%
 %%%%%%%%%%%
+-export([current_loggers/0]).
 -export([start_loggers/1]).
 -export([stop_loggers/1]).
 
@@ -26,6 +27,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
+-spec current_loggers() -> [atom()].
+current_loggers() ->
+    dl_conf_mgr:running_loggers().
+
 -spec start_loggers([atom()]) -> [{atom(), atom() | {atom(), atom()}}].
 start_loggers(Loggers) ->
     gen_dl_agent:call(?MODULE, {st_lg, Loggers}).
