@@ -23,10 +23,10 @@
 %%%%%%%%%%%%%%%%%%%%%
 %%% API Functions %%%
 %%%%%%%%%%%%%%%%%%%%%
--export([channel_info/1,channel_info/2]).
+-export([channel_info/1,channel_info/2,is_local_channel/1]).
 -export([instrument_info/1]).
 -export([local_buses/0,bus_info/1]).
--export([logger_info/1]).
+-export([logger_info/1,local_loggers/0,running_loggers/0]).
 
 -export([get_read_mfa/1]).
 -export([get_write_mfa/1]).
@@ -34,6 +34,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% API Definitions %%%
 %%%%%%%%%%%%%%%%%%%%%%%
+local_loggers() ->
+    gen_dl_agent:call(?MODULE, local_lgs).
+
+running_loggers() ->
+    gen_dl_agent:call(?MODULE, run_lgs).
+
 local_buses() ->
     gen_dl_agent:call(?MODULE, local_bs).
 
@@ -81,10 +87,15 @@ handle_sb_msg({_Ref, Pid, {dtb, _LgId, ChData, _Ival}}, State) ->
 handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
+handle_info({'DOWN', _MRef, process, Obj, _Info}, #state{}=SD) when is_pid(Obj) ->
+    LgInfo = get_lg_by_pid(Obj),
+    record_logger_pid(dl_dt_data:get_channel(LgInfo),undefined),
+    {noreply, SD}.
 
-handle_info(_Info, StateData) ->
-    {noreply, StateData}.
-
+handle_call(local_lgs, _From, StateData) ->
+    {reply, local_lgs(), StateData};
+handle_call(run_lgs, _From, StateData) ->
+    {reply, run_lgs(), StateData};
 handle_call(local_bs, _From, StateData) ->
     {reply, get_local_bss(), StateData};
 handle_call({info, ch, {In, Loc}}, _From, StateData) ->
@@ -224,6 +235,36 @@ create_dt_data_table() ->
 	    AnyOther
     end.
 
+-spec local_lgs() -> [atom()].
+local_lgs() ->
+    Qs = qlc:q([dl_dt_data:get_channel(Lg) 
+		|| Lg <- mnesia:table(dl_dt_data),
+		   is_local_channel(dl_dt_data:get_channel(Lg))]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    Ans.
+
+-spec get_lg_by_pid(pid()) -> [atom()].
+get_lg_by_pid(Pid) ->
+    Qs = qlc:q([Lg
+		|| Lg <- mnesia:table(dl_dt_data),
+		   dl_dt_data:get_pid(Lg) == Pid]),
+    {atomic, [Ans]} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    Ans.
+
+-spec run_lgs() -> [atom()].
+run_lgs() ->
+    Qs = qlc:q([dl_dt_data:get_channel(Lg) 
+		|| Lg <- mnesia:table(dl_dt_data),
+		   dl_dt_data:get_pid(Lg) =/= undefined]),
+    {atomic, Ans} = mnesia:transaction(fun() ->
+					       qlc:e(Qs)
+				       end),
+    Ans.
+
 -spec get_local_bss() -> [atom()].
 get_local_bss() ->
     NodeName = dl_util:node_name(),
@@ -240,15 +281,6 @@ instr_on_bus(BusName) ->
     Mid = fun({_,X,_}) -> X end,
     Qs = qlc:q([In || In <- mnesia:table(dl_instr_data),
 		      Mid(dl_instr_data:get_bus(In)) == BusName]),
-    {atomic, Ans} = mnesia:transaction(fun() ->
-					       qlc:e(Qs)
-				       end),
-    Ans.
-
--spec chs_on_instr(atom()) -> [dl_ch_data:ch_data()].
-chs_on_instr(InstrName) ->
-    Qs = qlc:q([Ch || Ch <- mnesia:table(dl_ch_data),
-		      dl_ch_data:get_instr(Ch) == InstrName]),
     {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
 				       end),
@@ -495,12 +527,6 @@ add_logger(DtData) ->
 		mnesia:write(DtData)
 	end,
     {atomic, ok} = mnesia:transaction(F),
-    try 
-	maybe_start_logger(DtData)
-    catch
-	C:E ->
-	    lager:info("couldn't start logger for ~p: (~p~p)",[DtData,C,E])
-    end,
     dl_softbus:bcast(agents, ?MODULE, {ndt, DtData}).
 
 -spec update_logger(dl_dt_data:dt_data()) -> ok.
@@ -511,16 +537,6 @@ update_logger(DtData) ->
     {atomic, ok} = mnesia:transaction(F),
     dl_softbus:bcast(agents, ?MODULE, {udt, DtData}).
 
--spec maybe_start_logger(dl_dt_data:dl_dt_data()) -> ok.
-maybe_start_logger(DtData) ->
-    ChName = dl_dt_data:get_channel(DtData),
-    case is_local_channel(ChName) of
-	true ->
-	    start_logging(DtData);
-	false ->
-	    do_nothing
-    end.
-
 -spec is_local_channel(atom()) -> boolean().
 is_local_channel(ChName) ->
     {ok, Dt} = get_ch_data(ChName),
@@ -530,19 +546,10 @@ is_local_channel(ChName) ->
 is_local_instr(InstrName) ->
     {ok, Dt} = get_instr_data(InstrName),
     {_, BusName, _} = dl_instr_data:get_bus(Dt),
-    lists:member(BusName, get_local_bss()).
-
--spec start_logging(dl_dt_data:dl_dt_data()) -> pid().
-start_logging(DtData) ->			   
-    ChName = dl_dt_data:get_channel(DtData),
-    {ok, ChData} = get_ch_data(ChName),
-    Ival = dl_dt_data:get_interval(DtData),
-    case supervisor:start_child(dl_data_taker_sup,[ChData,Ival]) of
-	{ok, Pid} ->
-	    ok; % no longer do record_logger_pid(ChName,Pid);
-	{error, Reason} ->
-	    lager:info("failed to start logger for reason: ~p",[Reason])
-    end.
+    lists:member(BusName, lists:map(fun(X) -> 
+					    dl_bus_data:get_id(X) 
+				    end,
+				    get_local_bss())).
 
 -spec record_logger_pid(atom(),pid()) -> ok.
 record_logger_pid(ChName,LgPid) ->
@@ -555,7 +562,9 @@ record_logger_pid(ChName,LgPid) ->
 				       end),
     start_logger_monitor(LgPid).
 		
--spec start_logger_monitor(pid()) -> ok.
+-spec start_logger_monitor(pid() | undefined) -> ok.
+start_logger_monitor(undefined) ->
+    ok;
 start_logger_monitor(LgPid) ->
     erlang:monitor(process, LgPid).
    
@@ -611,7 +620,7 @@ try_instr_start(InData) ->
     try 
 	dl_instr:start_instr(InData)
     catch
-	error:undef ->
-	    lager:warning("Couldn't call dl_instr:start_instr! (undef)")
+	C:E ->
+	    lager:warning("Couldn't call dl_instr:start_instr! (~p~p)",[C,E])
     end,
     ok.
