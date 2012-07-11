@@ -72,7 +72,7 @@ force_positive(Other) ->
 -spec tm220(binary()) -> binary().
 tm220(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
-    P = linear_interp(0.5880813592280791,Raw,-3),
+    P = math:pow(10,linear_interp(0.5880813592280791,Raw,-3)),
     erlang:list_to_binary([erlang:float_to_list(P), " Torr"]).
 
 -spec kjlc354_cal(binary()) -> binary().
