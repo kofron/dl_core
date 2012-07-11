@@ -444,7 +444,7 @@ maybe_add_or_update_channel(ChData) ->
 	{ok, ChData} ->
 	    lager:debug("ignoring redundant channel conf (~p = ~p)",[ChData,ChData]);
 	{ok, OldChData} ->
-	    lager:debug("overwriting conf for channel: (~p != ~p)",[ChData, NewChData]),
+	    lager:debug("overwriting conf for channel: (~p != ~p)",[ChData, OldChData]),
 	    update_channel(ChData)
     end.
 
