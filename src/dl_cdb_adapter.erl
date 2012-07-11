@@ -98,9 +98,9 @@ handle_info({change, R, {done, _LastSeq}},
     {noreply, State#state{conf_ch_ref=ConfRef}};
 %% We get two kinds of changes.  The first kind comes from the 
 %% configuration stream:
-handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=Revs}=State) ->
+handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=_Revs}=State) ->
     dl_softbus:bcast(agents, ?MODULE, ChangeData),
-    {noreply, NewState};
+    {noreply, State};
 %% The second kind of changes come from the command stream.
 handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl=H}=State) ->
     NewState = case ignore_update_rev(ChangeData, Revs) of
@@ -201,7 +201,6 @@ update_rev_data(ChangeData,RevisionInfo) ->
 %%----------------------------------------------------------------------%%
 -spec ignore_update_rev(ejson:json_object(), dict()) -> boolean().
 ignore_update_rev(ChangeLine, RevsDict) ->
-    Type = props:get('doc.type', ChangeLine),
     DocID = props:get('doc._id', ChangeLine),
     BinRev = props:get('doc._rev', ChangeLine),
     RevNo = strip_rev_no(BinRev),
