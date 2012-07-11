@@ -115,11 +115,6 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 				     {gen_os_cmd, execute, A};
 				 {system, get, heartbeat} ->
 				     BFA;
-				 {error, _Reason}=Err ->
-				     spawn(fun() ->
-						   ID = props:get('doc._id',ChangeData),
-						   worker_err(Err,ID,H)
-					   end);
 				 Other ->
 				     Other
 			     end,
@@ -130,7 +125,12 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 					     worker(MFA,ID,H) 
 				     end);
 			   false ->
-			       lager:debug("recvd cmd for another node.")
+			       lager:debug("recvd cmd for another node.");
+			   {error, _Reason}=Err ->
+			       spawn(fun() ->
+					     ID = props:get('doc._id',ChangeData),
+					     worker_err(Err,ID,H)
+				     end)
 		       end,
 		       State#state{revs=update_rev_data(ChangeData,Revs)}
 	       end,
@@ -340,6 +340,8 @@ update_couch_doc(DbHandle, DocID, Props) ->
 %%      dripline is running on can respond to a given compiled result.
 %%----------------------------------------------------------------------%%
 -spec node_is_endpoint(term()) -> boolean().
+node_is_endpoint({error,_Reason}=E) ->
+    E;
 node_is_endpoint({{unix, BusID, _}, _F, _A}) ->
     lager:debug("bus ~p interrogated.",[BusID]),
     LocalIDs = [dl_bus_data:get_id(X) || X <- dl_conf_mgr:local_buses()],
