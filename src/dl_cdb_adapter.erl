@@ -98,15 +98,9 @@ handle_info({change, R, {done, _LastSeq}},
     {noreply, State#state{conf_ch_ref=ConfRef}};
 %% We get two kinds of changes.  The first kind comes from the 
 %% configuration stream:
-handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=Revs}=State) ->
-    NewState = case ignore_update_rev(ChangeData, Revs) of
-		   true ->
-		       State;
-		   false ->
-		       dl_softbus:bcast(agents, ?MODULE, ChangeData),
-		       State#state{revs=update_rev_data(ChangeData,Revs)}
-	       end,
-    {noreply, NewState};
+handle_info({change, R, ChangeData}, #state{conf_ch_ref=R, revs=_Revs}=State) ->
+    dl_softbus:bcast(agents, ?MODULE, ChangeData),
+    {noreply, State};
 %% The second kind of changes come from the command stream.
 handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl=H}=State) ->
     NewState = case ignore_update_rev(ChangeData, Revs) of
