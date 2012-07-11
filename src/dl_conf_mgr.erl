@@ -445,7 +445,7 @@ maybe_add_or_update_channel(ChData) ->
 	    lager:debug("ignoring redundant channel conf");
 	{ok, NewChData} ->
 	    lager:debug("overwriting conf for channel: ~p",[NewChData]),
-	    update_channel(NewChData)
+	    update_channel(ChData)
     end.
 
 -spec maybe_add_or_update_logger(dl_dt_data:ch_data()) -> ok.
@@ -458,7 +458,7 @@ maybe_add_or_update_logger(LgData) ->
 	    lager:debug("ignoring redundant logger conf");
 	{ok, NewLgData} ->
 	    lager:debug("overwriting conf for logger: ~p",[NewLgData]),
-	    update_logger(NewLgData)
+	    update_logger(LgData)
     end.
 
 -spec maybe_add_or_update_bus(dl_bus_data:bus_data()) -> ok.
@@ -471,7 +471,7 @@ maybe_add_or_update_bus(ChData) ->
 	    lager:debug("ignoring redundant bus conf");
 	{ok, NewChData} ->
 	    lager:debug("overwriting conf for bus: ~p",[NewChData]),
-	    update_bus(NewChData)
+	    update_bus(ChData)
     end.
 
 -spec maybe_add_or_update_instrument(dl_instr_data:dl_instr_data()) -> ok.
@@ -484,7 +484,7 @@ maybe_add_or_update_instrument(InData) ->
 	    lager:debug("ignoring redundant instrument conf");
 	{ok, NewInData} ->
 	    lager:debug("overwriting conf for instrument: ~p",[NewInData]),
-	    update_instrument(NewInData)
+	    update_instrument(InData)
     end.
 		
 -spec add_instrument(dl_instr_data:dl_instr_data()) -> ok.
