@@ -157,7 +157,7 @@ chan_opts_string(rtd91) ->
 chan_opts_string(dmm_dc) ->
     "10,0.001";
 chan_opts_string(dmm_dc_mv) ->
-    "100mv,AUTO";
+    "100mv,DEF";
 chan_opts_string(dmm_ac) ->
     "10,0.001";
 chan_opts_string(cernox) ->
