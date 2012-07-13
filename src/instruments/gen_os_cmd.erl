@@ -83,7 +83,8 @@ handle_call({ex, Args}, F, #state{mod=M,mod_sd=MSD,cmd_port=none}=SD) ->
 		    end,
     case Port of
 	none ->
-	    {reply, Reply, SD#state{cmd_port=Port}};
+	    ReplDt = make_err_reply_data(Reply),
+	    {reply, ReplDt, SD#state{cmd_port=Port}};
 	Port ->
 	    {noreply, SD#state{cmd_port=Port, sndr=F}}
     end;
@@ -107,15 +108,21 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+make_err_reply_data({error, {_Class, _Error}=E}) ->
+    Dt = dl_data:new(),
+    DtE = dl_data:set_result(Dt, E),
+    DtC = dl_data:set_code(DtE, error),
+    do_set_timestamp(DtC).
+
 do_make_data(ExitStatus, FlatList) ->
     Dt = dl_data:new(),
     Data = erlang:list_to_binary(FlatList),
     DtE = do_set_err_code(ExitStatus, dl_data:set_data(Dt, Data)),
-    DtT = do_set_timestamp(DtE).
+    do_set_timestamp(DtE).
 
 do_set_err_code(0, DlDt) ->
     dl_data:set_code(DlDt, ok);
-do_set_err_code(NonZero, DlDt) ->
+do_set_err_code(_NonZero, DlDt) ->
     dl_data:set_code(DlDt, error).
 
 do_set_timestamp(DlDt) ->
