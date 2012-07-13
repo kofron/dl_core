@@ -72,7 +72,7 @@ init([CallbackMod]=Args) ->
 handle_call({ex, Args}, F, #state{mod=M,mod_sd=MSD,cmd_port=none}=SD) ->
     BaseCmd = M:base_cmd(),
     ArgList = M:process_args(Args,MSD),
-    OSOpts = [exit_status, {args, ArgList}],
+    OSOpts = [exit_status, {args, ArgList}, stderr_to_stdout],
     {Reply, Port} = try
 			P = erlang:open_port({spawn_executable, BaseCmd},
 					     OSOpts),
@@ -110,7 +110,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 make_err_reply_data({error, {_Class, _Error}=E}) ->
     Dt = dl_data:new(),
-    DtE = dl_data:set_result(Dt, E),
+    DtE = dl_data:set_data(Dt, E),
     DtC = dl_data:set_code(DtE, error),
     do_set_timestamp(DtC).
 
