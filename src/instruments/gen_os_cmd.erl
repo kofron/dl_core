@@ -72,7 +72,7 @@ init([CallbackMod]=Args) ->
 handle_call({ex, Args}, F, #state{mod=M,mod_sd=MSD,cmd_port=none}=SD) ->
     BaseCmd = M:base_cmd(),
     ArgList = M:process_args(Args,MSD),
-    OSOpts = [exit_status, {args, ArgList}],
+    OSOpts = [exit_status, {args, ArgList}, stderr_to_stdout],
     {Reply, Port} = try
 			P = erlang:open_port({spawn_executable, BaseCmd},
 					     OSOpts),
@@ -83,7 +83,8 @@ handle_call({ex, Args}, F, #state{mod=M,mod_sd=MSD,cmd_port=none}=SD) ->
 		    end,
     case Port of
 	none ->
-	    {reply, Reply, SD#state{cmd_port=Port}};
+	    ReplDt = make_err_reply_data(Reply),
+	    {reply, ReplDt, SD#state{cmd_port=Port}};
 	Port ->
 	    {noreply, SD#state{cmd_port=Port, sndr=F}}
     end;
@@ -93,9 +94,10 @@ handle_call({ex, _Args}, _F, #state{cmd_port=_P}=SD) ->
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
-handle_info({P, {exit_status, _St}}, #state{cmd_port=P, sndr=F, data=D}=SD) ->
+handle_info({P, {exit_status, St}}, #state{cmd_port=P, sndr=F, data=D}=SD) ->
     FlatList = lists:flatten(lists:reverse(D)),
-    gen_server:reply(F, erlang:list_to_binary(FlatList)),
+    Reply = do_make_data(St,FlatList),
+    gen_server:reply(F, Reply),
     {noreply, SD#state{cmd_port=none, sndr=none, data=[]}};
 handle_info({P, {data, Dt}}, #state{cmd_port=P,data=D}=SD) ->
     {noreply, SD#state{data=[Dt|D]}}.
@@ -105,3 +107,23 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
+
+make_err_reply_data({error, {_Class, _Error}=E}) ->
+    Dt = dl_data:new(),
+    DtE = dl_data:set_data(Dt, E),
+    DtC = dl_data:set_code(DtE, error),
+    do_set_timestamp(DtC).
+
+do_make_data(ExitStatus, FlatList) ->
+    Dt = dl_data:new(),
+    Data = erlang:list_to_binary(FlatList),
+    DtE = do_set_err_code(ExitStatus, dl_data:set_data(Dt, Data)),
+    do_set_timestamp(DtE).
+
+do_set_err_code(0, DlDt) ->
+    dl_data:set_code(DlDt, ok);
+do_set_err_code(_NonZero, DlDt) ->
+    dl_data:set_code(DlDt, error).
+
+do_set_timestamp(DlDt) ->
+    dl_data:set_ts(DlDt, dl_util:make_ts()).
