@@ -259,16 +259,13 @@ worker({M, F, [InstrName,ChLoc|_Rest]=A}, DocID, DbHandle) ->
 		     dl_data_to_couch(HookedData);
 		 gen_os_cmd ->
 		     Res = erlang:apply(M,F,A),
-		     DlDt = dl_data:new(),
-		     DlDt2 = dl_data:set_code(DlDt, ok),
-		     DlDt3 = dl_data:set_data(DlDt2, Res),
 		     ChInfo = dl_conf_mgr:channel_info(InstrName, ChLoc),
 		     HookedData = try
 				      ChName = dl_ch_data:get_id(ChInfo),
-				      dl_hooks:apply_hooks(ChName,DlDt3)
+				      dl_hooks:apply_hooks(ChName,Res)
 				  catch
 				      _C:_E ->
-					  DlDt3
+					  Res
 				  end,
 		     dl_data_to_couch(HookedData)
 	     end,
