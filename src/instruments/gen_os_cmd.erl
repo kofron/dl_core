@@ -93,9 +93,10 @@ handle_call({ex, _Args}, _F, #state{cmd_port=_P}=SD) ->
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
-handle_info({P, {exit_status, _St}}, #state{cmd_port=P, sndr=F, data=D}=SD) ->
+handle_info({P, {exit_status, St}}, #state{cmd_port=P, sndr=F, data=D}=SD) ->
     FlatList = lists:flatten(lists:reverse(D)),
-    gen_server:reply(F, erlang:list_to_binary(FlatList)),
+    Reply = do_make_data(St,FlatList),
+    gen_server:reply(F, Reply),
     {noreply, SD#state{cmd_port=none, sndr=none, data=[]}};
 handle_info({P, {data, Dt}}, #state{cmd_port=P,data=D}=SD) ->
     {noreply, SD#state{data=[Dt|D]}}.
@@ -105,3 +106,17 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
+
+do_make_data(ExitStatus, FlatList) ->
+    Dt = dl_data:new(),
+    Data = erlang:list_to_binary(FlatList),
+    DtE = do_set_err_code(ExitStatus, dl_data:set_data(Dt, Data)),
+    DtT = do_set_timestamp(DtE).
+
+do_set_err_code(0, DlDt) ->
+    dl_data:set_code(DlDt, ok);
+do_set_err_code(NonZero, DlDt) ->
+    dl_data:set_code(DlDt, error).
+
+do_set_timestamp(DlDt) ->
+    dl_data:set_ts(DlDt, dl_util:make_ts()).
