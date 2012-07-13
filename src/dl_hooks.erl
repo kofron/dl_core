@@ -41,9 +41,14 @@
 -spec apply_hooks(binary, dl_ch_data:ch_data()) -> 
 			 dl_ch_data:ch_data().
 apply_hooks(ChName, Data) ->
-    D = dl_conf_mgr:channel_info(ChName),
-    Hooks = dl_ch_data:get_post_hooks(D),
-    do_apply_hooks(Data, Hooks).
+    case is_binary(dl_data:get_data(Data)) of
+	true ->
+	    D = dl_conf_mgr:channel_info(ChName),
+	    Hooks = dl_ch_data:get_post_hooks(D),
+	    do_apply_hooks(Data, Hooks);
+	false ->
+	    skip_processing(Data)
+    end.
 
 do_apply_hooks(Data, Hooks) ->
     case dl_data:get_code(Data) of
@@ -85,6 +90,7 @@ kjlc354_cal(<<Val:15/binary,_Rest/binary>>) ->
 strip_newline_chars(<<>>) ->
     <<>>;
 strip_newline_chars(Bin) ->
+    lager:debug("strip newline chars: ~p",[Bin]),
     case binary:last(Bin) of
 	$\n ->
 	    strip_newline_chars(binary:part(Bin,{0, byte_size(Bin) -1}));
