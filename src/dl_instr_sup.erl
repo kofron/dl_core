@@ -24,6 +24,5 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    EproSup = ?CHILD(eprologix_sup, supervisor),
-    {ok, { {one_for_one, 5, 10}, [EproSup]} }.
+    {ok, { {one_for_one, 5, 10}, []} }.
 

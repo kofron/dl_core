@@ -25,7 +25,7 @@ start_link() ->
 
 init([]) ->
     DlInstrSup = ?CHILD(dl_instr_sup, supervisor),
-
+    EproSup = ?CHILD(eprologix_sup, supervisor),
     Compiler = ?CHILD(dl_compiler, worker),
     
     DTSup = ?CHILD(dl_data_taker_sup, supervisor),
@@ -69,7 +69,10 @@ init([]) ->
       [dl_cdb_adapter]
      },
 
-    Children = [DlInstrSup, Compiler, ConfMgr,CdbAdapter, SysMgr, DTSup],
+    Children = [EproSup, DlInstrSup, 
+		Compiler, ConfMgr,
+		CdbAdapter, SysMgr, 
+		DTSup],
 
     {ok, { {one_for_one, 5, 10}, Children} }.
 
