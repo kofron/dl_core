@@ -149,7 +149,7 @@ intercept(M, [{X1,Y1},{_X2,_Y2}]) ->
 
 -spec locate_interval(float(), [{float(),float()}]) -> [{float(),float()}].
 % First a straight find.  If the value is between two X values, we found it.
-locate_interval(Pt, [{X1,_}=A,{X2,_}=B|_Rest]) when Pt >= X1 andalso Pt < X1 ->
+locate_interval(Pt, [{X1,_}=A,{X2,_}=B|_Rest]) when Pt >= X1 andalso Pt < X2 ->
     [A,B];
 % OK, if the value is above the highest bin, use the last two bins.
 locate_interval(Pt, [{X1,_Y1}=A,{X2,_Y2}=B]) when Pt >= X2 andalso Pt >= X1 ->
@@ -164,7 +164,7 @@ locate_interval(Pt, [_Hd|Tail]) ->
     
 -spec cernox33122_points() -> [{float(), float()}].
 cernox33122_points() ->
-    Raw = [{57.6,300},
+    Raw = [{47.6,300}, % R was originally 57.6 here, but changed due to empirical error
 	   {81.1,200},
 	   {149,100},
 	   {180,80},
@@ -177,7 +177,7 @@ cernox33122_points() ->
 
 -spec cernox43022_points() -> [{float(), float()}].
 cernox43022_points() ->
-    Raw = [{68.6,300},
+        Raw = [{68.6,300},
 	   {248,78},
 	   {3771,4.2}],
     lists:map(fun({X,Y}) ->
@@ -187,7 +187,7 @@ cernox43022_points() ->
 
 -spec cernox01912_points() -> [{float(), float()}].
 cernox01912_points() ->
-    Raw = [{45.5,297},
+        Raw = [{45.5,297},
 	   {167.5,77},
            {310.9,40},
            {318.2,39},
