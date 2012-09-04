@@ -139,6 +139,8 @@ chan_type_string(rtd91) ->
     "TEMP";
 chan_type_string(dmm_dc) ->
     "VOLT:DC";
+chan_type_string(dmm_dc_mv) ->
+    "VOLT:DC";
 chan_type_string(dcc_ac) ->
     "VOLT:AC";
 chan_type_string(cernox) ->
@@ -154,6 +156,8 @@ chan_opts_string(rtd91) ->
     "RTD,91";
 chan_opts_string(dmm_dc) ->
     "10,0.001";
+chan_opts_string(dmm_dc_mv) ->
+    "100mv,DEF";
 chan_opts_string(dmm_ac) ->
     "10,0.001";
 chan_opts_string(cernox) ->
