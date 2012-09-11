@@ -3,7 +3,9 @@
 % messages to dl_agents.   
 -module(dl_softbus).
 
--export([attach/1,detach/1,bcast/3]).
+-export([attach/1,
+	 detach/1,
+	 bcast/3]).
 
 -type group_name_type() :: atom().
 -type softbus_msg_type() :: atom().
