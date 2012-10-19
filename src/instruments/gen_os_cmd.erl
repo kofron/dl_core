@@ -72,7 +72,10 @@ init([CallbackMod]=Args) ->
 handle_call({ex, Args}, F, #state{mod=M,mod_sd=MSD,cmd_port=none}=SD) ->
     BaseCmd = M:base_cmd(),
     ArgList = M:process_args(Args,MSD),
-    OSOpts = [exit_status, {args, ArgList}, stderr_to_stdout],
+    OSOpts = [exit_status, 
+	      {args, ArgList}, 
+	      {env, [{"LD_LIBRARY_PATH","/usr/local/lib"}]},
+	      stderr_to_stdout],
     {Reply, Port} = try
 			P = erlang:open_port({spawn_executable, BaseCmd},
 					     OSOpts),
