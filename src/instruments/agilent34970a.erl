@@ -151,7 +151,7 @@ chan_type_string(fourwire) ->
 chan_opts_string(rtd85) ->
     "RTD,85";
 chan_opts_string(rtd85_fourwire) ->
-    "RTD,85";
+    "FRTD,85";
 chan_opts_string(rtd91) ->
     "RTD,91";
 chan_opts_string(dmm_dc) ->
