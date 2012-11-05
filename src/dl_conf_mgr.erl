@@ -88,6 +88,7 @@ handle_sb_msg({_Ref, _AnyID, _Msg}, #state{}=State) ->
     {noreply, State}.
 
 handle_info({'DOWN', _MRef, process, Obj, _Info}, #state{}=SD) when is_pid(Obj) ->
+    io:format("logger went down!~p~n",[Obj]),
     LgInfo = get_lg_by_pid(Obj),
     record_logger_pid(dl_dt_data:get_channel(LgInfo),undefined),
     {noreply, SD}.
@@ -250,10 +251,15 @@ get_lg_by_pid(Pid) ->
     Qs = qlc:q([Lg
 		|| Lg <- mnesia:table(dl_dt_data),
 		   dl_dt_data:get_pid(Lg) == Pid]),
-    {atomic, [Ans]} = mnesia:transaction(fun() ->
+    {atomic, Ans} = mnesia:transaction(fun() ->
 					       qlc:e(Qs)
 				       end),
-    Ans.
+    case Ans of
+	[] ->
+	    [];
+	[Lgr] ->
+	    Lgr
+    end. 
 
 -spec run_lgs() -> [atom()].
 run_lgs() ->
@@ -553,6 +559,7 @@ is_local_instr(InstrName) ->
 
 -spec record_logger_pid(atom(),pid()) -> ok.
 record_logger_pid(ChName,LgPid) ->
+    io:format("recording ~p~n",[LgPid]),
     Qs = qlc:q([Lg || Lg <- mnesia:table(dl_dt_data),
 		      dl_dt_data:get_channel(Lg) == ChName]),
     {atomic, ok} = mnesia:transaction(fun() ->

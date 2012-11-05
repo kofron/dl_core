@@ -28,6 +28,8 @@
 	 cernox33122/1,
 	 cernox43022/1,
 	 cernox01912/1,
+	 cernox01929/1,
+	 cernox31305/1,
 	 tm220/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -122,6 +124,18 @@ cernox01912(<<Val:15/binary,_Rest/binary>>) ->
     Bin = do_cernox_cal(Raw, cernox01912_points()),
     erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
 
+-spec cernox01929(binary()) -> binary().
+cernox01929(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox01929_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
+
+-spec cernox31305(binary()) -> binary().
+cernox31305(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox31305_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
+
 %%%%%%%%%%%%%%%%
 %%% Internal %%%
 %%%%%%%%%%%%%%%%
@@ -196,6 +210,36 @@ cernox01912_points() ->
 		      {math:log(X),math:log(Y)}
 	      end,
 	      Raw).
+
+-spec cernox31305_points() -> [{float(), float()}].
+cernox31305_points() ->
+        Raw = [{62.8,300},
+	       {186,78},
+	       {4203,4.2}],
+    lists:map(fun({X,Y}) ->
+		      {math:log(X),math:log(Y)}
+	      end,
+	      Raw).
+
+-spec cernox01929_points() -> [{float(), float()}].
+cernox01929_points() ->
+        Raw = [{45.5,297},
+	       {187.5,77},
+	       {440.9,30.5},
+	       {1922,6.7},
+	       {2249,5.9},
+	       {3445,4.3},
+	       {4611,3.5},
+	       {6146,3},
+	       {8338,2.5},
+	       {11048,2.1},
+	       {11352,2}],
+    lists:map(fun({X,Y}) ->
+		      {math:log(X),math:log(Y)}
+	      end,
+	      Raw).
+
+
 
 -spec linear_interp(float(), float(), float()) -> float().
 linear_interp(M, X, B) ->
