@@ -24,7 +24,7 @@ init(_Args) ->
     {ok, #state{}}.
 
 base_cmd() ->
-    "/home/grybka/sweepline/sweepline".
+    "/home/grybka/powerline/sweepline".
 
 process_args(Args, _StateData) ->
     proplist_to_args(Args, []).
