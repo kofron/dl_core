@@ -30,7 +30,9 @@
 	 cernox01912/1,
 	 cernox01929/1,
 	 cernox31305/1,
-	 tm220/1]).
+	 tm220/1,
+	 precision_shunt/1,
+	 lakeshore_hall_cal_80K/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% Aesthetic hooks %%%
@@ -82,6 +84,20 @@ tm220(<<Val:15/binary,_Rest/binary>>) ->
     P = math:pow(10,linear_interp(0.5880813592280791,Raw,-3)),
     erlang:list_to_binary([erlang:float_to_list(P), " Torr"]).
 
+-spec precision_shunt(binary()) -> binary().
+precision_shunt(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    % Precision shunt is 50mV/20A
+    R = 50.0e-03/20.0,
+    P = linear_interp(1.0/R,Raw,0.0),
+    erlang:list_to_binary([erlang:float_to_list(P), " A"]).
+
+-spec lakeshore_hall_cal_80K(binary()) -> binary().
+lakeshore_hall_cal_80K(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    P = linear_interp(0.118*0.9991,Raw + 0.7e-3,0.0),
+    erlang:list_to_binary([erlang:float_to_list(P), " kG"]).
+    
 -spec kjlc354_cal(binary()) -> binary().
 kjlc354_cal(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
