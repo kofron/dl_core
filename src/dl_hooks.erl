@@ -95,7 +95,6 @@ precision_shunt(<<Val:15/binary,_Rest/binary>>) ->
 -spec lakeshore_hall_cal_80K(binary()) -> binary().
 lakeshore_hall_cal_80K(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
-    io:format("~p~n",[Raw]),
     P = linear_interp(0.9991/0.847,Raw*1.0e3 + 0.7e-3,0.0),
     erlang:list_to_binary([erlang:float_to_list(P), " kG"]).
     
