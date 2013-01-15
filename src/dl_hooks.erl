@@ -102,7 +102,7 @@ lakeshore_hall_cal_80K(<<Val:15/binary,_Rest/binary>>) ->
 -spec nmr_hall_cal_77K(binary()) -> binary().
 nmr_hall_cal_77K(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
-    P = linear_interp(0.114727,Raw*1.0e3,0.001174),
+    P = linear_interp(1.14727,Raw*1.0e3,0.01174),
     erlang:list_to_binary([erlang:float_to_list(P), " kG"]).
     
 -spec kjlc354_cal(binary()) -> binary().
