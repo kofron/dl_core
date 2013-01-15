@@ -32,7 +32,8 @@
 	 cernox31305/1,
 	 tm220/1,
 	 precision_shunt/1,
-	 lakeshore_hall_cal_80K/1]).
+	 lakeshore_hall_cal_80K/1,
+	 nmr_hall_cal_77K/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% Aesthetic hooks %%%
@@ -96,6 +97,12 @@ precision_shunt(<<Val:15/binary,_Rest/binary>>) ->
 lakeshore_hall_cal_80K(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
     P = linear_interp(0.9991/0.847,Raw*1.0e3 + 0.7e-3,0.0),
+    erlang:list_to_binary([erlang:float_to_list(P), " kG"]).
+
+-spec nmr_hall_cal_77K(binary()) -> binary().
+nmr_hall_cal_77K(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    P = linear_interp(0.114727,Raw*1.0e3,0.001174),
     erlang:list_to_binary([erlang:float_to_list(P), " kG"]).
     
 -spec kjlc354_cal(binary()) -> binary().
