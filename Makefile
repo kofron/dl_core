@@ -11,7 +11,7 @@ release: clean compile
 
 clean:
 	@(./rebar clean)
-	rm -Rf release/dripline
 
 test:
 	@(./rebar skip_deps=true eunit)
+	@(./rebar skip_deps=true ct)
