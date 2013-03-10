@@ -1,0 +1,11 @@
+endpoint <- (node:node '/')? ep:ch_name `
+Tuples = lists:filter(fun erlang:is_tuple/1, lists:flatten(Node)),
+BCat = fun(A, B) -> <<A/binary, B/binary>> end,
+lists:map(fun({K,V}) -> {K, lists:foldr(BCat, <<>>, lists:flatten(V))} end, Tuples)
+`;
+
+ch_name <- (alphanum / uscore)+;
+node <- (alphanum+ (dot alphanum+)*);
+dot <- '.';
+uscore <- '_';
+alphanum <- [a-zA-Z0-9];
