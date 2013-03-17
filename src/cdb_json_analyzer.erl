@@ -13,7 +13,8 @@
 		key_tree = [],
 		im_st :: #imed{},
 		res = ok :: dl_types:succ_type(),
-		ers = [dl_types:error_tuple()]
+		ers = [dl_types:error_tuple()],
+		in_cmd = false
 	}).
 
 init([]) ->
@@ -34,6 +35,8 @@ analyze(JSON) ->
 
 handle_event(start_object, State) ->
 	State;
+handle_event(end_object, #state{in_cmd=true,key_tree=[_K|R]}=State) ->
+	State#state{key_tree=R,in_cmd=false};
 handle_event(end_object, #state{key_tree=[_K|R]}=State) ->
 	State#state{key_tree=R};
 handle_event(end_object, #state{key_tree=[]}=State) ->
@@ -42,6 +45,8 @@ handle_event(start_array, State) ->
 	State;
 handle_event(end_array, State) ->
 	State;
+handle_event({key, <<"command">>}, #state{}=State) ->
+	State#state{in_cmd=true};
 handle_event({key, <<"get">>=K}, 
 			#state{key_tree=[<<"command">>|T]}=State) ->
 	State#state{key_tree=[K|T]};
