@@ -6,7 +6,8 @@
 		chn = none :: dl_types:chn_type(),
 		id  = none :: dl_types:id_type(),
 		tmo = none :: dl_types:tmo_type(),
-		node = none :: dl_types:node_type()
+		node = none :: dl_types:node_type(),
+		val = none :: dl_types:req_val_t()
 	}).
 
 -record(state, {
@@ -47,26 +48,22 @@ handle_event(end_array, State) ->
 	State;
 handle_event({key, <<"command">>}, #state{}=State) ->
 	State#state{in_cmd=true};
-handle_event({key, <<"get">>=K}, 
-			#state{key_tree=[<<"command">>|T]}=State) ->
+handle_event({key, <<"get">>=K}, #state{in_cmd=true,key_tree=T}=State) ->
 	State#state{key_tree=[K|T]};
 handle_event({key, <<"get">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
 	Err = {error, {bad_tree_level, {H, <<"get">>}}},
 	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
-handle_event({key, <<"set">>=K}, 
-			#state{key_tree=[<<"command">>|T]}=State) ->
+handle_event({key, <<"set">>=K}, #state{in_cmd=true, key_tree=T}=State) ->
 	State#state{key_tree=[K|T]};
 handle_event({key, <<"set">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
 	Err = {error, {bad_tree_level, {H, <<"set">>}}},
 	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
-handle_event({key, <<"value">>=K}, 
-			#state{key_tree=[<<"command">>|T]}=State) ->
+handle_event({key, <<"value">>=K}, #state{in_cmd=true, key_tree=T}=State) ->
 	State#state{key_tree=[K|T]};
 handle_event({key, <<"value">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
 	Err = {error, {bad_tree_level, {H, <<"value">>}}},
 	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
-handle_event({key, <<"timeout">>=K}, 
-			#state{key_tree=[<<"command">>|T]}=State) ->
+handle_event({key, <<"timeout">>=K}, #state{in_cmd=true, key_tree=T}=State) ->
 	State#state{key_tree=[K|T]};
 handle_event({key, <<"timeout">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
 	Err = {error, {bad_tree_level, {H, <<"timeout">>}}},
@@ -87,7 +84,7 @@ handle_event({string, S},
 				ers = E,
 				im_st=#imed{act=none}=I
 			}=State) when K == <<"get">>; K == <<"set">> ->
-	case parse_endpoint(S) of
+	case parse_endpoint(S) of 
 		{ok, Node, EP} ->
 			State#state{im_st=I#imed{act=K, chn=EP, node=Node}};
 		{ok, EP} ->
@@ -95,7 +92,10 @@ handle_event({string, S},
 		{error, Err} ->
 			State#state{res = error, ers=[Err|E], im_st=I}
 	end;
-handle_event({_NotString, V}, 
+handle_event({_Type, V}, #state{key_tree=[<<"value">>|_R], 
+								im_st=#imed{}=I}=State) ->
+	State#state{im_st=I#imed{val=V}};
+handle_event({_NotString, V},  
 			#state{
 				key_tree=[K|_R],
 				im_st=#imed{act=none}=I,
@@ -145,12 +145,13 @@ parse_endpoint(S) ->
 			{error, [{bad_char, BadChar}, {at, R}]}
 	end.
 
-imed_to_req_data(#imed{act=A,chn=C,id=I}) ->
+imed_to_req_data(#imed{act=A,chn=C,id=I,val=V}) ->
 	Dt0 = req_data:new(),
 	Dt1 = req_data:set_ep(Dt0, binary_to_atom(C, latin1)),
 	Dt2 = req_data:set_verb(Dt1, binary_to_atom(A, latin1)),
 	Dt3 = req_data:set_id(Dt2, I),
-	{ok, Dt3}.
+	Dt4 = req_data:set_req_val(Dt3, V),
+	{ok, Dt4}.
 
 %%%%%%%%%%%%%
 %%% EUNIT %%%
@@ -159,7 +160,7 @@ imed_to_req_data(#imed{act=A,chn=C,id=I}) ->
 -include_lib("eunit/include/eunit.hrl").
 
 basic_get_test() ->
-	DC = jsx:decoder(json_analyzer, [], []),
+	DC = jsx:decoder(cdb_json_analyzer, [], []),
 	T = <<"{\"get\": \"abc\"}">>,
 	{Res, IMed} = DC(T),
 	[
@@ -168,27 +169,28 @@ basic_get_test() ->
 		?assertEqual(IMed#imed.chn, <<"abc">>)
 	].
 get_integer_channel_test() ->
-	DC = jsx:decoder(json_analyzer, [], []),
+	DC = jsx:decoder(cdb_json_analyzer, [], []),
 	T = <<"{\"get\": 1}">>,
 	{Res, IMed} = DC(T),
-	Err = {bad_value, [{field, get}, {value, 1}]},
+	Err = {bad_value, [{field, <<"get">>}, {value, 1}]},
 	[
-		?assertEqual(Res, error),
-		?assertEqual(IMed, [Err])
+		?assertEqual(error, Res),
+		?assertEqual([Err], IMed)
 	].
 
 get_multiple_verb_test() ->
-	DC = jsx:decoder(json_analyzer, [], []),
+	DC = jsx:decoder(cdb_json_analyzer, [], []),
 	T = <<"{\"get\": \"abc\", \"set\": \"arg\"}">>,
 	{Res, IMed} = DC(T),
-	Err = {ambiguous, {verbs, {<<"get">>, <<"set">>}}},
+	Err1 = {ambiguous, {verbs, {<<"get">>, <<"set">>}}},
+	Err2 = {error, {bad_tree_level, {<<"get">>, <<"set">>}}},
 	[
-		?assertEqual(Res, error),
-		?assertEqual(IMed, [Err])
+		?assertEqual(error, Res),
+		?assertEqual([Err1,Err2], IMed)
 	].
 
 get_node_chn_test() ->
-	DC = jsx:decoder(json_analyzer, [], []),
+	DC = jsx:decoder(cdb_json_analyzer, [], []),
 	T = <<"{\"get\": \"abc.def/ghi_jkl\"}">>,
 	{Res, IMed} = DC(T),
 	[
