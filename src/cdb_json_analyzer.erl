@@ -1,5 +1,5 @@
--module(json_analyzer).
--export([init/1, handle_event/2]).
+-module(cdb_json_analyzer).
+-export([init/1, handle_event/2, analyze/1]).
 
 -record(imed, {
 		act = none :: dl_types:act_type(),
@@ -24,24 +24,48 @@ init([]) ->
 		ers = []
 	}.
 
+analyze(JSON) ->
+	case (jsx:decoder(?MODULE, [], []))(JSON) of
+		{ok, Im} ->
+			imed_to_req_data(Im);
+		AnyOther ->
+			AnyOther
+	end.
+
 handle_event(start_object, State) ->
 	State;
 handle_event(end_object, #state{key_tree=[_K|R]}=State) ->
 	State#state{key_tree=R};
+handle_event(end_object, #state{key_tree=[]}=State) ->
+	State#state{key_tree=[]};
 handle_event(start_array, State) ->
 	State;
 handle_event(end_array, State) ->
 	State;
-handle_event({key, <<"get">>=K}, #state{key_tree=T}=State) ->
+handle_event({key, <<"get">>=K}, 
+			#state{key_tree=[<<"command">>|T]}=State) ->
 	State#state{key_tree=[K|T]};
-handle_event({key, <<"set">>=K}, #state{key_tree=T}=State) ->
+handle_event({key, <<"get">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
+	Err = {error, {bad_tree_level, {H, <<"get">>}}},
+	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
+handle_event({key, <<"set">>=K}, 
+			#state{key_tree=[<<"command">>|T]}=State) ->
 	State#state{key_tree=[K|T]};
-handle_event({key, <<"value">>=K}, #state{key_tree=T}=State) ->
+handle_event({key, <<"set">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
+	Err = {error, {bad_tree_level, {H, <<"set">>}}},
+	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
+handle_event({key, <<"value">>=K}, 
+			#state{key_tree=[<<"command">>|T]}=State) ->
 	State#state{key_tree=[K|T]};
-handle_event({key, <<"id">>=K}, #state{key_tree=T}=State) ->
+handle_event({key, <<"value">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
+	Err = {error, {bad_tree_level, {H, <<"value">>}}},
+	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
+handle_event({key, <<"timeout">>=K}, 
+			#state{key_tree=[<<"command">>|T]}=State) ->
 	State#state{key_tree=[K|T]};
-handle_event({key, <<"timeout">>=K}, #state{key_tree=T}=State) ->
-	State#state{key_tree=[K|T]};
+handle_event({key, <<"timeout">>=K}, #state{ers=E,key_tree=[H|_T]=Tr}=State) ->
+	Err = {error, {bad_tree_level, {H, <<"timeout">>}}},
+	State#state{res=error, ers=[Err|E], key_tree=[K|Tr]};
 handle_event({key, K}, #state{key_tree=T}=State) ->
 	State#state{key_tree=[K|T]};
 handle_event(end_json, #state{res=ok, im_st=Im}) ->
@@ -50,6 +74,8 @@ handle_event(end_json, #state{res=error, ers=Ers}) ->
 	{error, Ers};
 % For all of the data callbacks below, the head of the key tree
 % is the key that the value is associated with.
+
+% Handle gets and sets.
 handle_event({string, S}, 
 			#state{
 				key_tree=[K|_R],
@@ -58,12 +84,20 @@ handle_event({string, S},
 			}=State) when K == <<"get">>; K == <<"set">> ->
 	case parse_endpoint(S) of
 		{ok, Node, EP} ->
-			State#state{im_st=#imed{act=K, chn=EP, node=Node}};
+			State#state{im_st=I#imed{act=K, chn=EP, node=Node}};
 		{ok, EP} ->
-			State#state{im_st=#imed{act=K, chn=EP}};
+			State#state{im_st=I#imed{act=K, chn=EP}};
 		{error, Err} ->
 			State#state{res = error, ers=[Err|E], im_st=I}
 	end;
+handle_event({_NotString, V}, 
+			#state{
+				key_tree=[K|_R],
+				im_st=#imed{act=none}=I,
+				ers = E
+			}=State) when K == <<"get">>; K == <<"set">> ->
+	Err = {bad_value, [{field, K}, {value, V}]},
+	State#state{im_st=I, res = error, ers = [Err|E]};
 handle_event({string, _Str}, 
 			#state{
 				key_tree=[K|_R], 
@@ -71,19 +105,23 @@ handle_event({string, _Str},
 			}=State) when K == <<"get">>; K == <<"set">> ->
 	Err = {ambiguous, {verbs, {A, K}}},
 	State#state{im_st=I#imed{act=get}, res = error, ers=[Err|E]};
-handle_event({_NotString, V}, 
+
+% Handle the couchdb _id field and bind it to the resulting data structure.
+handle_event({string, Str}, 
 			#state{
-				key_tree=[<<"get">>|_R],
-				im_st=#imed{act=none}=I,
-				ers = E
+				key_tree=[<<"_id">>|_R], 
+				im_st=#imed{}=I
 			}=State) ->
-	Err = {bad_value, [{field, get}, {value, V}]},
-	State#state{im_st=I, res = error, ers = [Err|E]};
+	State#state{im_st=I#imed{id=Str}};
+
+% Throw all others out
 handle_event({integer, _Int}, State) ->
 	State;
 handle_event({float, _Float}, State) ->
 	State;
 handle_event({literal, _L}, State) ->
+	State;
+handle_event({_Type, _Value}, State) ->
 	State.
 
 %%%%%%%%%%%%%%%%
@@ -101,6 +139,13 @@ parse_endpoint(S) ->
 			BadChar = binary:at(S, C),
 			{error, [{bad_char, BadChar}, {at, R}]}
 	end.
+
+imed_to_req_data(#imed{act=A,chn=C,id=I}) ->
+	Dt0 = req_data:new(),
+	Dt1 = req_data:set_ep(Dt0, binary_to_atom(C, latin1)),
+	Dt2 = req_data:set_verb(Dt1, binary_to_atom(A, latin1)),
+	Dt3 = req_data:set_id(Dt2, I),
+	{ok, Dt3}.
 
 %%%%%%%%%%%%%
 %%% EUNIT %%%

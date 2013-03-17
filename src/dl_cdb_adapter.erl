@@ -107,6 +107,7 @@ handle_info({change, R, ChangeData}, #state{cmd_ch_ref=R, revs=Revs, db_cmd_hndl
 		   true ->
 		       State;
 		   false ->
+		 		
 		       {ok, BFA} = dl_compiler:compile(ChangeData),
 		       MFA = case BFA of
 				 {{prologix, _, _}, F, A} ->
