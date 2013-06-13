@@ -31,6 +31,7 @@
 	 cernox01929/1,
 	 cernox31305/1,
 	 tm220/1,
+	 celsius_to_kelvin/1,
 	 precision_shunt/1,
 	 lakeshore_hall_cal_80K/1,
 	 nmr_hall_cal_77K/1]).
@@ -128,6 +129,12 @@ linear_r_to_z(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
     Z = linear_interp(0.02460529,Raw,-29.12859597),
     erlang:list_to_binary([erlang:float_to_list(Z)," mm"]).
+
+-spec celsius_to_kelvin(binary()) -> binary().
+celsius_to_kelvin(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    K = Raw + 273.15,
+    erlang:list_to_binary([erlang:float_to_list(K)," K"]).
 
 -spec cernox33122(binary()) -> binary().
 cernox33122(<<Val:15/binary,_Rest/binary>>) ->
