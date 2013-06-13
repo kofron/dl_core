@@ -49,4 +49,6 @@ proplist_to_args([{length, L}|T], Acc) ->
     proplist_to_args(T,[Str | Acc]);
 proplist_to_args([{count, C}|T], Acc) ->
     Str = lists:concat(["-c", C]),
-    proplist_to_args(T,[Str | Acc]).
+    proplist_to_args(T,[Str | Acc]);
+proplist_to_args([{description, D}|T],Acc) ->
+    proplist_to_args(T,[D | Acc]).
