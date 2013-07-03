@@ -32,7 +32,7 @@ do_read(data_status, State) ->
     {send, <<"M">>, State};
 do_read('curve.x', State) ->
     DataBit = data_output(x_out),
-    {send, [<<"DCB ">>,erlang:integer_to_list(DataBit)], State}.
+    {send_then_parse, [<<"DCB ">>,erlang:integer_to_list(DataBit)], State}.
 
 do_write(sensitivity, Value, State) ->
     {send, [<<"SEN ">>, Value], State};
