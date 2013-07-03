@@ -1,7 +1,7 @@
 -module(dsp7265).
 -behavior(gen_prologix).
 
--export([do_read/2,do_write/3]).
+-export([do_read/2,do_write/3, do_parse/2]).
 -export([init/1, start_link/3]).
 -ifdef(TEST).
 -export([data_output/1]).
@@ -47,6 +47,9 @@ do_write(data_curves, Value, State) ->
     {send, [<<"CBD ">>, CurveStr], State};
 do_write(take_data_register, _, State) ->
     {send, [<<"TD">>], State}.
+
+do_parse(_Data, State) ->
+    {ok, <<"hello">>, State}.
 
 data_output(Outputs) when is_list(Outputs) ->
     data_output_acc(Outputs, 0);
