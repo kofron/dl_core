@@ -48,8 +48,15 @@ do_write(data_curves, Value, State) ->
 do_write(take_data_register, _, State) ->
     {send, [<<"TD">>], State}.
 
-do_parse(_Data, State) ->
-    {ok, <<"hello">>, State}.
+do_parse(Data, State) ->
+    {ok, parse_twos_complement(Data), State}.
+
+parse_twos_complement(Bin) ->
+    parse_twos_complement_acc(Bin, []).
+parse_twos_complement_acc(<<>>, Acc) ->
+    lists:reverse(Acc);
+parse_twos_complement_acc(<<_Value:16,Rest/binary>>,Acc) ->
+    parse_twos_complement_acc(Rest,["0"|Acc]).
 
 data_output(Outputs) when is_list(Outputs) ->
     data_output_acc(Outputs, 0);
