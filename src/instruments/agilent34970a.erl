@@ -36,7 +36,7 @@ start_link(InstrumentID,EProID,GPIBAddress) ->
     gen_prologix:start_link(?MODULE, InstrumentID, EProID, GPIBAddress).
 
 init(_Args) ->
-    InitialState = #state{ttl=20,
+    InitialState = #state{ttl=3,
 			 last_upd=erlang:now(),
 			 cache=dict:new(),
 			 new_ch=false},
