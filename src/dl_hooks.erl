@@ -30,6 +30,9 @@
 	 cernox01912/1,
 	 cernox01929/1,
 	 cernox31305/1,
+     cernox87821/1,
+     cernox87791/1,
+     cernox87771/1,
 	 tm220/1,
 	 celsius_to_kelvin/1,
 	 precision_shunt/1,
@@ -166,6 +169,24 @@ cernox31305(<<Val:15/binary,_Rest/binary>>) ->
     Bin = do_cernox_cal(Raw, cernox31305_points()),
     erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
 
+-spec cernox87821(binary()) -> binary().
+cernox87821(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox87821_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
+
+-spec cernox87771(binary()) -> binary().
+cernox87771(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox87771_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
+
+-spec cernox87791(binary()) -> binary().
+cernox87791(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox87791_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).        
+
 %%%%%%%%%%%%%%%%
 %%% Internal %%%
 %%%%%%%%%%%%%%%%
@@ -250,6 +271,36 @@ cernox31305_points() ->
 		      {math:log(X),math:log(Y)}
 	      end,
 	      Raw).
+
+-spec cernox87821_points() -> [{float(), float()}].
+cernox87821_points() ->
+        Raw = [{68.7,305},
+           {218,77},
+           {1764,4.2}],
+    lists:map(fun({X,Y}) ->
+              {math:log(X),math:log(Y)}
+          end,
+          Raw).
+
+-spec cernox87791_points() -> [{float(), float()}].
+cernox87791_points() ->
+        Raw = [{66.9,305},
+           {209,79},
+           {1637,4.2}],
+    lists:map(fun({X,Y}) ->
+              {math:log(X),math:log(Y)}
+          end,
+          Raw).
+
+-spec cernox87771_points() -> [{float(), float()}].
+cernox87771_points() ->
+        Raw = [{68.3,305},
+           {211,77},
+           {1572,4.2}],
+    lists:map(fun({X,Y}) ->
+              {math:log(X),math:log(Y)}
+          end,
+          Raw).
 
 -spec cernox01929_points() -> [{float(), float()}].
 cernox01929_points() ->
