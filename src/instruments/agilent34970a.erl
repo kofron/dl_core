@@ -87,6 +87,7 @@ do_update_cache(#state{cache=C,new_ch=true}=StateData) ->
 	   ":FORM:READ:TIME ON;", 
 	   ":FORM:READ:TIME:TYPE ABS;",
 	   ":FORM:READ:UNIT ON;:",
+	   "UNIT:TEMP K",
 	   TrigCmd,
 	   {sleep, 1500},
 	   io_lib:format("DATA:REMOVE? ~B",[NCh])
