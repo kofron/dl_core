@@ -73,7 +73,7 @@ decode_negative_value(Bin) ->
     Flipped = flip_bits(Bin),
     binary_to_16bit(Flipped).
 flip_bits(Binary) ->
-    << <<(B xor 1):1>> || <<B:1>> <= Binary >>.
+    << <<(B bxor 1):1>> || <<B:1>> <= Binary >>.
 
 binary_to_16bit(<<Val:16/integer>>) ->
     Val.
