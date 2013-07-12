@@ -75,7 +75,7 @@ decode_negative_value(Bin) ->
 flip_bits(Binary) ->
     << <<(B bxor 1):1>> || <<B:1>> <= Binary >>.
 
-binary_to_16bit(<<Val:16/integer>>) ->
+binary_to_16bit(<<Val:1/native-signed-integer-unit:16>>) ->
     Val.
 
 data_output(Outputs) when is_list(Outputs) ->
