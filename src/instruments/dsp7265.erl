@@ -55,7 +55,7 @@ parse_twos_complement(Bin) ->
     parse_twos_complement_acc(Bin, []).
 parse_twos_complement_acc(<<>>, Acc) ->
     lists:reverse(Acc);
-parse_twos_complement_acc(<<Value:16/binary,Rest/binary>>=Bin,Acc) ->
+parse_twos_complement_acc(<<Value:2/binary,Rest/binary>>=Bin,Acc) ->
     DecodedInt = case is_positive(Value) of 
         true ->
             binary_to_16bit(Value);
