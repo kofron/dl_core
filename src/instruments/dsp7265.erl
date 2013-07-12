@@ -56,8 +56,27 @@ parse_twos_complement(Bin) ->
 parse_twos_complement_acc(<<>>, Acc) ->
     lists:reverse(Acc);
 parse_twos_complement_acc(<<Value:16/integer,Rest/binary>>,Acc) ->
-    parse_twos_complement_acc(Rest,[Value|Acc]).
-    
+    DecodedInt = case is_positive(Value) of 
+        true ->
+            Value;
+        false ->
+            decode_negative_value(Value)
+        end,
+    parse_twos_complement_acc(Rest,[DecodedInt|Acc]).
+
+is_positive(<<0:1,_Rest/binary>>) ->
+    true;
+is_positive(_MSBIsSet) ->
+    false.
+
+decode_negative_value(Bin) ->
+    Flipped = flip_bits(Bin),
+    binary_to_16bit(Flipped).
+flip_bits(Binary) ->
+    << <<(B xor 1):1>> || <<B:1>> <= Binary >>.
+
+binary_to_16bit(<<Val:16/integer>>) ->
+    Val.
 
 data_output(Outputs) when is_list(Outputs) ->
     data_output_acc(Outputs, 0);
