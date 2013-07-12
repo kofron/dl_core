@@ -36,7 +36,7 @@ start_link(InstrumentID,EProID,GPIBAddress) ->
     gen_prologix:start_link(?MODULE, InstrumentID, EProID, GPIBAddress).
 
 init(_Args) ->
-    InitialState = #state{ttl=20,
+    InitialState = #state{ttl=3,
 			 last_upd=erlang:now(),
 			 cache=dict:new(),
 			 new_ch=false},
@@ -217,13 +217,19 @@ fetch_cached_value(Channel, Cache) ->
     dict:fetch(Channel, Cache).
 
 setup_cmds([]) ->
+    {{Y,M,D},{HH,MM,SS}} = calendar:local_time(),
+    TimeString = io_lib:format(":SYST:TIME ~.2.0w,~.2.0w,~.2.0w;",[HH,MM,SS]),
+    DateString = io_lib:format(":SYST:DATE ~.2.0w,~.2.0w,~.2.0w;",[Y,M,D]),
     [
      "*CLS;",
      "*RST;",
+     TimeString,
+     DateString,
      ":FORM:READ:CHAN ON;",
      ":FORM:READ:TIME ON;", 
      ":FORM:READ:TIME:TYPE ABS;",
-     ":FORM:READ:UNIT ON"
+     ":FORM:READ:UNIT ON;"
+     ":UNIT:TEMP K"
     ].
 
 trig_cmd() ->
