@@ -47,9 +47,6 @@ do_read('curve.adc3', State) ->
     {send_then_parse, [<<"DCB ">>,erlang:integer_to_list(DataBit)], State}.
 
 
-
-
-
 do_write(sensitivity, Value, State) ->
     {send, [<<"SEN ">>, Value], State};
 do_write(gain, Value, State) ->
@@ -104,6 +101,8 @@ data_output_acc([], Acc) ->
 data_output_acc([O|Rest], Acc) ->
     data_output_acc(Rest, Acc + (1 bsl data_output_table(O))).
 
+data_output_table(B) when is_binary(B) ->
+    data_output_table(erlang:binary_to_atom(B,latin1));
 data_output_table(x_out) ->
     0;
 data_output_table(y_out) ->
