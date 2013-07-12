@@ -55,8 +55,9 @@ parse_twos_complement(Bin) ->
     parse_twos_complement_acc(Bin, []).
 parse_twos_complement_acc(<<>>, Acc) ->
     lists:reverse(Acc);
-parse_twos_complement_acc(<<_Value:16,Rest/binary>>,Acc) ->
-    parse_twos_complement_acc(Rest,["0"|Acc]).
+parse_twos_complement_acc(<<Value:16/integer,Rest/binary>>,Acc) ->
+    parse_twos_complement_acc(Rest,[Value|Acc]).
+    
 
 data_output(Outputs) when is_list(Outputs) ->
     data_output_acc(Outputs, 0);
