@@ -30,6 +30,7 @@
 	 cernox01912/1,
 	 cernox01929/1,
 	 cernox31305/1,
+	 cernox87820/1,
 	 cernox87821/1,
 	 cernox87821_recalibrated/1,
 	 cernox87791/1,
@@ -170,6 +171,12 @@ cernox31305(<<Val:15/binary,_Rest/binary>>) ->
     Bin = do_cernox_cal(Raw, cernox31305_points()),
     erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
 
+-spec cernox87820(binary()) -> binary().
+cernox87820(<<Val:15/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    Bin = do_cernox_cal(Raw, cernox87820_points()),
+    erlang:list_to_binary([erlang:float_to_list(Bin)," K"]).
+
 -spec cernox87821(binary()) -> binary().
 cernox87821(<<Val:15/binary,_Rest/binary>>) ->
     Raw = dl_util:binary_to_float(Val),
@@ -294,6 +301,16 @@ cernox87821_points() ->
         Raw = [{68.7, 305},
 	       {218,77},
 	       {1764,4.2}],
+    lists:map(fun({X,Y}) ->
+              {math:log(X),math:log(Y)}
+          end,
+          Raw).
+
+-spec cernox87820_points() -> [{float(), float()}].
+cernox87820_points() ->
+        Raw = [{69.2, 305},
+	       {212,77},
+	       {1522,4.2}],
     lists:map(fun({X,Y}) ->
               {math:log(X),math:log(Y)}
           end,
