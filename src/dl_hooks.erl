@@ -39,7 +39,8 @@
 	 celsius_to_kelvin/1,
 	 precision_shunt/1,
 	 lakeshore_hall_cal_80K/1,
-	 nmr_hall_cal_77K/1]).
+	 nmr_hall_cal_77K/1
+	 power_meter_cal/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %%% Aesthetic hooks %%%
@@ -128,6 +129,12 @@ strip_newline_chars(Bin) ->
 	_AnyOther ->
 	    Bin
     end.
+
+-spec power_meter_cal(binary()) -> binary().
+power_meter_cal(<<_:1/binary, Val:16/binary,_Rest/binary>>) ->
+    Raw = dl_util:binary_to_float(Val),
+    MicroWatts = Raw/5.0E-4,
+    erlang:list_to_binary([erlang:float_to_list(MicroWatts)," uW"]).
 
 -spec linear_r_to_z(binary()) -> binary().
 linear_r_to_z(<<Val:15/binary,_Rest/binary>>) ->
