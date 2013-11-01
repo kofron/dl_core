@@ -19,12 +19,12 @@
 %%---------------------------------------------------------------------%%
 -spec make_ts() -> binary().
 make_ts() ->
-    LocalTime = calendar:local_time(),
+    LocalTime = calendar:univeral_time(),
     to_binary_ts(LocalTime).
 
 -spec to_binary_ts(calendar:datetime()) -> binary().
 to_binary_ts({{Y,M,D},{HH,MM,SS}}) ->
-    FormStr = "~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B",
+    FormStr = "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0BZ",
     L = lists:flatten(io_lib:format(FormStr,[Y,M,D,HH,MM,SS])),
     list_to_binary(L).
 
