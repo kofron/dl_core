@@ -19,7 +19,7 @@
 %%---------------------------------------------------------------------%%
 -spec make_ts() -> binary().
 make_ts() ->
-    LocalTime = calendar:univeral_time(),
+    LocalTime = calendar:universal_time(),
     to_binary_ts(LocalTime).
 
 -spec to_binary_ts(calendar:datetime()) -> binary().
