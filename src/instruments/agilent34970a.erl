@@ -217,7 +217,7 @@ fetch_cached_value(Channel, Cache) ->
     dict:fetch(Channel, Cache).
 
 setup_cmds([]) ->
-    {{Y,M,D},{HH,MM,SS}} = calendar:local_time(),
+    {{Y,M,D},{HH,MM,SS}} = calendar:universal_time(),
     TimeString = io_lib:format(":SYST:TIME ~.2.0w,~.2.0w,~.2.0w;",[HH,MM,SS]),
     DateString = io_lib:format(":SYST:DATE ~.2.0w,~.2.0w,~.2.0w;",[Y,M,D]),
     [
@@ -343,8 +343,8 @@ parse_instrument_response(<<V:152/bitstring,
 			    Rest/binary>>, Acc) ->
     Locator = ch_spec_from_binary(Ch),
     Ts = <<Y/binary,"-",M/binary,"-",D/binary,
-	   " ", 
-	   HH/binary,":",MM/binary,":",SS/binary>>,
+	   "T", 
+	   HH/binary,":",MM/binary,":",SS/binary,"Z">>,
     R = #cache_v{
 	  lastval = V,
 	  ts = Ts
