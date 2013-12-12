@@ -1,4 +1,1 @@
-dl_core
-=======
-
-new model for dripline core
+This repository has been merged with kofron/dripline and will be removed soon!
