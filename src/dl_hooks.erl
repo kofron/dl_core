@@ -151,12 +151,8 @@ locate_interval(Pt, [_Hd|Tail]) ->
     
 -spec cernox33122_points() -> [{float(), float()}].
 cernox33122_points() ->
-    Raw = [{57.6,300},
-	   {81.1,200},
-	   {149,100},
-	   {180,80},
-	   {269,50},
-	   {598,20}],
+    Raw = [{45.1,295},
+	   {156,77}],
     lists:map(fun({X,Y}) ->
 		      {math:log(X),math:log(Y)}
 	      end,
@@ -164,9 +160,8 @@ cernox33122_points() ->
 
 -spec cernox43022_points() -> [{float(), float()}].
 cernox43022_points() ->
-    Raw = [{68.6,300},
-	   {248,78},
-	   {3771,4.2}],
+    Raw = [{70.1,295},
+	   {102,77}],
     lists:map(fun({X,Y}) ->
 		      {math:log(X),math:log(Y)}
 	      end,
@@ -174,11 +169,8 @@ cernox43022_points() ->
 
 -spec cernox01912_points() -> [{float(), float()}].
 cernox01912_points() ->
-    Raw = [{45.5,297},
-	   {167.5,77},
-           {310.9,40},
-           {318.2,39},
-           {433.4,28}],
+    Raw = [{48.3,295},
+	   {184,77}],
     lists:map(fun({X,Y}) ->
 		      {math:log(X),math:log(Y)}
 	      end,
